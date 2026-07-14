@@ -1,0 +1,786 @@
+/* app.css — Standalone styles for the KnitStitch Grid app
+   Extracted from the CraftCMS site.css. Contains the design tokens,
+   base reset/typography, shared components, and the KnitStitch app layout. */
+
+/* ==========================================================================
+   1. Design Tokens
+   ========================================================================== */
+:root {
+    --body: #333333;
+    --body-light: #8a8a8a;
+    --body-dark: #111111;
+    --primary: #ca9b52;
+    --primary-light: #e4c78f;
+    --primary-dark: #8b5d1f;
+    --secondary: #f7f4ef;
+    --secondary-light: #fbf9f5;
+    --secondary-dark: #e8e2d8;
+    --tertiary: #ffffff;
+    --tertiary-dark: #f2eee8;
+    --border: var(--secondary-dark);
+
+    /* Color pairs */
+    --color-pair-gold-bg: #efe9da;
+    --color-pair-gold-text: var(--primary-dark);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 0 rgba(17, 17, 17, 0.03);
+    --shadow-md: 0 5px 12px rgba(17, 17, 17, 0.08);
+    --shadow-lg: 0 14px 28px rgba(26, 19, 9, 0.12);
+
+    /* Typography */
+    --font-body: "Open Sans", sans-serif;
+    --font-heading: "Playfair Display", serif;
+    --font-brand: "Dancing Script", cursive;
+    --type-h1: clamp(30px, 4vw, 42px);
+    --type-h2: 28px;
+    --type-h3: 25px;
+    --type-h4: 18px;
+    --type-h5: 14px;
+    --type-h6: 12px;
+    --type-body: 16px;
+    --type-subtitle: 14px;
+    --type-caption: 12px;
+    --type-button: 12px;
+}
+
+/* ==========================================================================
+   2. Reset & Base
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+    scroll-behavior: smooth;
+}
+
+[id] {
+    scroll-margin-top: 80px;
+}
+
+body {
+    color: var(--body);
+    background: var(--secondary);
+    font-family: var(--font-body);
+    font-size: var(--type-body);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { opacity: 0.85; }
+
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 1.5em 0;
+}
+
+/* ==========================================================================
+   3. Typography
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--body-dark);
+}
+
+h1 {
+    margin-block: 0 0.55em;
+    margin-inline: 0;
+    font-family: var(--font-body);
+    font-size: var(--type-h1);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.2px;
+}
+
+h2 {
+    margin-block: 1.5em 0.45em;
+    margin-inline: 0;
+    font-family: var(--font-body);
+    font-size: var(--type-h2);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+h3 {
+    margin-block: 1.25em 0.45em;
+    margin-inline: 0;
+    font-family: var(--font-body);
+    font-size: var(--type-h3);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+h4 {
+    margin-block: 1em 0.35em;
+    margin-inline: 0;
+    font-family: var(--font-body);
+    font-size: var(--type-h4);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+h5 {
+    margin-block: 1em 0.35em;
+    margin-inline: 0;
+    font-family: var(--font-body);
+    font-size: var(--type-h5);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+h6 {
+    margin-block: 1em 0.35em;
+    margin-inline: 0;
+    font-family: var(--font-body);
+    font-size: var(--type-h6);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+h2:first-child,
+h3:first-child,
+h4:first-child,
+h5:first-child,
+h6:first-child {
+    margin-block-start: 0;
+}
+
+.body,
+.container-content {
+    font-size: var(--type-body);
+    line-height: 1.7;
+}
+
+.subtitle {
+    font-size: var(--type-subtitle);
+    line-height: 1.5;
+    color: var(--body-light);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 14px;
+}
+
+.caption {
+    font-size: var(--type-caption);
+    line-height: 1.4;
+    color: var(--body-light);
+}
+
+p,
+ul,
+ol,
+blockquote,
+pre,
+table {
+    margin: 0 0 1.1em;
+}
+
+blockquote {
+    padding: 0.9em 1.2em;
+    border-left: 4px solid var(--primary);
+    background: var(--secondary-light);
+    border-radius: 0 8px 8px 0;
+}
+
+pre {
+    overflow-x: auto;
+    padding: 1em 1.2em;
+    border-left: 4px solid var(--primary);
+    border-radius: 0 8px 8px 0;
+    background: var(--secondary-light);
+    color: var(--body-dark);
+}
+
+code {
+    padding: 0.18em 0.35em;
+    border-radius: 4px;
+    background: var(--secondary-dark);
+    color: var(--primary-dark);
+    font-size: 0.95em;
+}
+
+pre code {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 0.7em 0.8em;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+
+/* ==========================================================================
+   4. Layout
+   ========================================================================== */
+.shell {
+    width: 80%;
+    margin: 0 auto;
+}
+
+.page-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 14px;
+    align-items: start;
+}
+
+.page-layout--wide {
+    grid-template-columns: minmax(0, 1fr) 420px;
+    gap: 14px;
+}
+
+/* ==========================================================================
+   5. Site Header
+   ========================================================================== */
+.site-header {
+    background: var(--tertiary);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    min-height: 72px;
+    gap: 24px;
+}
+
+.header-row > .brand {
+    justify-self: start;
+}
+
+.brand {
+    margin: 0;
+    align-self: center;
+    color: var(--body-dark);
+    font-family: var(--font-brand);
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 0.95;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   6. Page Sub-header
+   ========================================================================== */
+.page-subheader {
+    padding: 24px 0 14px;
+    margin-bottom: 14px;
+}
+
+.page-subheader-inner {
+    text-align: center;
+    padding: 22px 28px;
+    background: var(--secondary-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-subheader-inner h1 {
+    margin: 0;
+}
+
+/* ==========================================================================
+   7. Buttons
+   ========================================================================== */
+button,
+.button {
+    font-family: inherit;
+    font-size: var(--type-button);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.button-primary {
+    background: var(--primary-dark);
+    color: var(--tertiary);
+    border-color: var(--primary-dark);
+}
+
+.button-primary:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.button-secondary {
+    background: transparent;
+    color: var(--body-dark);
+}
+
+.button-sm {
+    padding: 6px 10px;
+    font-size: 11px;
+}
+
+/* ==========================================================================
+   8. Forms
+   ========================================================================== */
+input[type="text"],
+input[type="number"],
+select {
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+select {
+    min-width: 140px;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.form-row label {
+    min-width: 80px;
+    font-size: 13px;
+}
+
+.form-row input[type="text"],
+.form-row input[type="number"] {
+    flex: 1;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0;
+    font-size: 13px;
+}
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slider-row input[type="range"] {
+    flex: 1;
+}
+
+.toggle-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* ==========================================================================
+   9. Container Sections
+   ========================================================================== */
+.container-sections {
+    display: grid;
+    gap: 14px;
+}
+
+.container-section {
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.container-sections > .container-section:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+/* Headed panel section — a panel with a grey header bar and white body. */
+.container-section--headed {
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--tertiary);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.container-section-header {
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    background: var(--tertiary-dark);
+}
+
+.container-section-body {
+    padding: 14px;
+}
+
+.container-actions {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+/* ==========================================================================
+   10. KnitStitch App Layout
+   ========================================================================== */
+
+/* Full-height layout — page never scrolls, only sidebar/canvas scroll internally */
+.page-knitstitch {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.page-knitstitch .site-header,
+.page-knitstitch .page-subheader {
+    flex-shrink: 0;
+}
+
+.page-knitstitch > .shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Ribbon bar */
+.ribbon-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    gap: 8px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.ribbon-modes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.workspace-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: 6px 14px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    gap: 6px;
+    white-space: nowrap;
+    position: relative;
+}
+
+.workspace-btn:hover { background: var(--secondary-light); }
+
+.workspace-btn .icon {
+    font-size: 18px;
+    color: var(--body);
+    line-height: 1;
+}
+
+.workspace-btn .label {
+    font-size: 10px;
+    color: var(--body);
+    line-height: 1;
+}
+
+.workspace-btn.active {
+    background: var(--color-pair-gold-bg);
+}
+
+.workspace-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 2px 2px 0 0;
+}
+
+/* Workspace grid — uses .page-layout with a wider sidebar */
+#app-container .page-layout {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+}
+
+.canvas-area {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.canvas-wrapper {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--tertiary);
+    overflow: auto;
+    padding: 12px;
+}
+
+.canvas-content {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Floating zoom control */
+.zoom-control {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    background: var(--tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(26, 19, 9, 0.12);
+    z-index: 100;
+}
+
+.zoom-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--body);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.zoom-btn:hover {
+    background: var(--secondary-light);
+    border-color: var(--border);
+}
+
+.zoom-btn:active {
+    background: var(--primary-light);
+}
+
+.zoom-level {
+    min-width: 42px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--body);
+    user-select: none;
+}
+
+.zoom-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    margin: 0 2px;
+}
+
+/* Measurement derived-values list */
+.measurement-derived {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    font-size: var(--type-caption);
+    color: var(--body-light);
+    line-height: 1.6;
+}
+
+.measurement-derived li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.measurement-derived span {
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+/* Sidebar */
+.sidebar {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.workspace-panel {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.workspace-panel.active {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+/* Object list */
+.object-list {
+    list-style: none;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.object-list li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+    font-size: 12px;
+    border-radius: 3px;
+}
+
+.object-list li::before {
+    content: none;
+}
+
+.object-list li:hover { background: var(--tertiary-dark); }
+
+.object-list li.is-selectable {
+    cursor: pointer;
+}
+
+.object-list li.selected {
+    background: var(--color-pair-gold-bg);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+/* Dimension edit overlay */
+#dim-edit-overlay {
+    position: fixed;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    background: var(--tertiary) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12) !important;
+    color: var(--body) !important;
+}
+
+#dim-edit-overlay .dim-edit-overlay__label,
+#dim-edit-overlay .dim-edit-overlay__hint {
+    font-size: 11px;
+    color: var(--body-light);
+}
+
+#dim-edit-overlay .dim-edit-overlay__controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#dim-edit-overlay .dim-edit-overlay__input {
+    width: 72px;
+    padding: 2px 4px;
+    font-size: 12px;
+    background: var(--tertiary) !important;
+    color: var(--body) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 3px !important;
+    font-family: inherit;
+}
+
+#dim-edit-overlay .dim-edit-overlay__button {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 3px !important;
+    cursor: pointer;
+    font-weight: 700;
+    background: var(--secondary-dark) !important;
+    color: var(--primary-dark) !important;
+}
+
+#dim-edit-overlay .dim-edit-overlay__button--primary {
+    background: var(--primary) !important;
+    color: white !important;
+}
+
+/* Color picker */
+.color-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.color-swatch {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+}

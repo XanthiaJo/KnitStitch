@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Playwright / test artifacts
+test-results/
+test-results-constraints/
+playwright-report/
+playwright/.cache/
+
+# Vitest coverage
+coverage/
+
+# Debug screenshots captured during E2E runs
+test-screenshots/
+screenshots/
+traces/
+
+# Vite config temporary files
+vite.config.js.timestamp-*.mjs
