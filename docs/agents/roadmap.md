@@ -2,7 +2,7 @@
 
 Internal, detail-heavy notes for agents working on KnitStitch. This is the companion to the human-readable [../roadmap.md](../roadmap.md).
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-15_
 
 ---
 
@@ -11,11 +11,264 @@ _Last updated: 2026-07-12_
 | Area | Status |
 |---|---|
 | Global constraint solver | Shipped |
+| SolveSpace WASM solver migration | Planned — 4-phase, feature-flagged |
 | Constraint types | 6 shipped (Coincident, Perpendicular, Midpoint, Equal Length, Horizontal/Vertical, Driven Dimensions) |
 | E2E test coverage | 19 passing (run via Playwright against DDEV) |
 | Unit test coverage | 67 passing across 12 files |
 | Sketch service refactor (`sketchService.js`) | Complete — tool registry extracted, service is a thin coordinator (~300 lines, all forwarders) |
 | UI refactor (`mainUi.js`) | Complete — split into 7 focused panel controllers, mainUi.js is a 63-line orchestrator |
+
+---
+
+## SolveSpace WASM Solver Migration
+
+Replace the hand-rolled gradient-descent solver (`globalConstraintSolver.js`
++ supporting error/feasibility/DOF modules) with SolveSpace's Newton's-method
+solver, compiled to WebAssembly via Emscripten. Shipped behind a feature flag
+so the native solver stays the default until the WASM backend passes the
+existing e2e suite.
+
+Companion to the human-readable plan in [../roadmap.md](../roadmap.md#solvespace-solver-migration).
+
+### Why SolveSpace
+
+- Battle-tested parametric 2D/3D CAD solver (used by the SolveSpace desktop app)
+- Handles constraint types we'd otherwise hand-code: parallel, fixed angle, symmetric, collinear, tangent, equal radius, etc.
+- Internal feasibility + overconstraint detection via `SolveResult` codes — lets us delete `perpendicularFeasibility.js`, `overconstraintChecker.js`, `dofAnalyzer.js`
+- Official JS/WASM bindings exist in-repo at `solvespace/solvespace/js/slvs.d.ts`
+
+### Why not trivial
+
+- **No published npm package.** However, as of December 2024 (PR #1343, commit `a208201c`), SolveSpace master includes a stateful C library (`src/slvs/lib.cpp`), embind JS bindings (`src/slvs/jslib.cpp`), a CMake `slvs-wasm` target (`src/slvs/CMakeLists.txt`), and a CI build script (`.github/scripts/build-wasmlib.sh`). We fork `solvespace/solvespace` directly and build the existing target — no custom bindings or CMake glue needed.
+- **GPL-3.0 licensing.** SolveSpace is GPL-3.0-or-later with no linking exception. The compiled `slvs.wasm` is a derivative work, so distributing it inside KnitStitch makes the whole app GPL-3.0-or-later. KnitStitch has adopted GPL-3.0-or-later accordingly (see `LICENSE`).
+- **6.2 MB single-file JS** first-load cost (WASM embedded as base64 via `-s SINGLE_FILE=1`) — mitigated by lazy loading only when `solverBackend === 'slvs'`.
+- **Coordinate system mismatch** — SolveSpace works in arbitrary units in a 2D workplane; we solve in inches and convert to/from pixels via the gauge.
+
+### Fork strategy
+
+We maintain a fork of `solvespace/solvespace` at
+`https://github.com/XanthiaJo/SolverWasm`. Rationale:
+
+- SolveSpace master already includes the stateful C API (`src/slvs/lib.cpp`), embind JS bindings (`src/slvs/jslib.cpp`), and a CMake `slvs-wasm` target — no custom bindings or CMake glue needed
+- Forking upstream directly means we can `git merge upstream/master` to pick up solver bug fixes
+- We only init the `extlib/eigen` and `extlib/mimalloc` submodules (header-only deps for the solver); GUI/render submodules are not needed
+- Can publish as an npm package later (`@knitstitch/solver-wasm`) so the build step disappears for downstream
+
+The fork's only modification is deleting the stale `cmake/Platform/Emscripten.cmake` (from the 2018 emscripten branch) that hardcoded `.bat` compiler suffixes and conflicted with modern emsdk (6.0.3+) which ships `.exe` wrappers.
+
+### Phase 1 — Ship the WASM (fork + build)
+
+| Step | Detail |
+|---|---|
+| Fork | `https://github.com/XanthiaJo/SolverWasm` (fork of `solvespace/solvespace`) — already created |
+| Submodule | `git submodule add https://github.com/XanthiaJo/SolverWasm.git vendor/solver-wasm` |
+| Submodules | `cd vendor/solver-wasm && git submodule update --init extlib/eigen extlib/mimalloc` (only solver deps, not GUI) |
+| Build script | `scripts/build-slvs.mjs` drives: `emsdk install/activate latest` → `cd vendor/solver-wasm && mkdir build-wasmlib && cd build-wasmlib && emcmake cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_GUI=OFF -DENABLE_CLI=OFF -DENABLE_TESTS=OFF -DENABLE_COVERAGE=OFF -DENABLE_OPENMP=OFF -DFORCE_VENDORED_Eigen3=ON -DENABLE_LTO=ON && cmake --build . --target slvs-wasm` |
+| Artifacts | `slvs.js` (~6.2 MB, single-file with embedded WASM via `-s SINGLE_FILE=1`) copied to `public/wasm/` |
+| Commit strategy | Commit the built `.wasm` + `.js` into the repo so the app builds without Emscripten installed; document the rebuild step in `AGENTS.md` |
+| Vite | Verify `public/wasm/*.wasm` is served with `application/wasm` MIME (Vite default for `public/`) |
+| License | KnitStitch adopts GPL-3.0-or-later (see `LICENSE`); `package.json` `license` field set to `"GPL-3.0-or-later"` |
+
+**Risk**: ~~the fork's Emscripten build target doesn't exist yet~~ **Resolved.** The `slvs-wasm` target builds successfully with emsdk 6.0.3 and produces a working `slvs.js` that passes the SolveSpace README test case. The only fork modification needed was deleting a stale `cmake/Platform/Emscripten.cmake` that hardcoded `.bat` suffixes.
+
+### Phase 2 — `SlvsAdapter` with real-world units
+
+New file: `src/services/sketch/solver/slvsAdapter.js`
+
+#### Unit conversion
+
+Solve in inches; convert to/from pixels via the gauge. X and Y converted
+independently because the grid is non-square (stitches ≠ rows).
+
+```javascript
+// px → inches
+pxToInchesX(px) { return px / cellWidthPx * (4 / stitchesPer4Inches); }
+pxToInchesY(px) { return px / cellHeightPx * (4 / rowsPer4Inches); }
+// inches → px
+inchesToPxX(in) { return in * cellWidthPx * (stitchesPer4Inches / 4); }
+inchesToPxY(in) { return in * cellHeightPx * (rowsPer4Inches / 4); }
+```
+
+A "40 px" dimension thus means the real-world measurement the user expects,
+not a raw pixel count.
+
+#### Adapter API
+
+```javascript
+class SlvsAdapter {
+  async init() {
+    // Load WASM via the solvespace() factory promise.
+    // Create base group g=1 and base 2D workplane wp.
+    this.slvs = await solvespace({ locateFile: f => `/wasm/${f}` });
+    this.g = 1;
+    this.wp = this.slvs.addBase2D(this.g);
+    this.pointHandles = new Map(); // pointId → slvs Entity
+    this.lineHandles  = new Map(); // lineId  → slvs Entity
+    this.ready = true;
+  }
+
+  syncFromSketch(sketch) {
+    // Clear and rebuild all entities from store state.
+    this.slvs.clearSketch();
+    this.pointHandles.clear();
+    this.lineHandles.clear();
+
+    // Points → slvs.addPoint2D(g, xIn, yIn, wp), converted px→inches
+    for (const p of sketch.points) {
+      const h = this.slvs.addPoint2D(this.g, this.pxToInchesX(p.x), this.pxToInchesY(p.y), this.wp);
+      this.pointHandles.set(p.id, h);
+      if (p.isAnchor || p.isOrigin) this.slvs.dragged(this.g, h, this.wp);
+    }
+
+    // Lines → slvs.addLine2D(g, startH, endH, wp)
+    for (const l of sketch.lines) {
+      const h = this.slvs.addLine2D(this.g, this.pointHandles.get(l.start.id), this.pointHandles.get(l.end.id), this.wp);
+      this.lineHandles.set(l.id, h);
+    }
+
+    // Constraints → mapped per type (see table below)
+    for (const c of sketch.constraints) this._addConstraint(c);
+
+    // Driving dimensions → slvs.distance(g, ptA, ptB, inchesValue, wp)
+    // Non-driven dimensions are labels only, no constraint added.
+    for (const d of sketch.dimensions) {
+      if (d.isConstrained) {
+        this.slvs.distance(this.g, this.pointHandles.get(d.a.id), this.pointHandles.get(d.b.id), this.pxToInches(d.drivenValue), this.wp);
+      }
+    }
+  }
+
+  solve(movedPoint) {
+    // Set dragged point's param directly, add temporary slvs.dragged for the move,
+    // solveSketch, return SolveResult.
+    if (movedPoint) {
+      const h = this.pointHandles.get(movedPoint.id);
+      this.slvs.setParamValue(h.param[0], this.pxToInchesX(movedPoint.x));
+      this.slvs.setParamValue(h.param[1], this.pxToInchesY(movedPoint.y));
+      this.slvs.dragged(this.g, h, this.wp);
+    }
+    return this.slvs.solveSketch(this.g, false);
+  }
+
+  writeBack(sketch) {
+    // For each point, read param values, convert inches→px, mutate in place.
+    // Matches the existing object-reference mutation pattern.
+    for (const p of sketch.points) {
+      const h = this.pointHandles.get(p.id);
+      p.x = this.inchesToPxX(this.slvs.getParamValue(h.param[0]));
+      p.y = this.inchesToPxY(this.slvs.getParamValue(h.param[1]));
+    }
+  }
+
+  solveAndWriteBack(sketch, movedPoints) {
+    this.syncFromSketch(sketch);
+    const moved = movedPoints.values().next().value; // SolveSpace handles all points at once
+    const result = this.solve(moved);
+    if (result.result === this.slvs.RESULT.OK) this.writeBack(sketch);
+    return result;
+  }
+}
+```
+
+#### Constraint mapping
+
+| KnitStitch `SketchConstraint.type` | SolveSpace call | Constant |
+|---|---|---|
+| Coincident | `slvs.coincident(g, ptA, ptB, wp)` | `C_POINTS_COINCIDENT` |
+| Perpendicular | `slvs.perpendicular(g, lineA, lineB, wp, false)` | `C_PERPENDICULAR` |
+| Equal | `slvs.addConstraint(g, C_EQUAL_LENGTH_LINES, wp, 0, E_NONE, E_NONE, lineA, lineB, ...)` | `C_EQUAL_LENGTH_LINES` |
+| Horizontal | `slvs.addConstraint(g, C_HORIZONTAL, wp, 0, E_NONE, E_NONE, line, E_NONE, ...)` | `C_HORIZONTAL` |
+| Vertical | `slvs.addConstraint(g, C_VERTICAL, wp, 0, E_NONE, E_NONE, line, E_NONE, ...)` | `C_VERTICAL` |
+| Midpoint (point-line) | `slvs.addConstraint(g, C_AT_MIDPOINT, wp, 0, pt, E_NONE, line, ...)` | `C_AT_MIDPOINT` |
+| Midpoint (line-line) | Add a point at each line midpoint, then `coincident` | composite |
+| Driving Dimension | `slvs.distance(g, ptA, ptB, inchesValue, wp)` | `C_PT_PT_DISTANCE` |
+
+### Phase 3 — Feature flag wiring
+
+#### Store change
+
+Add to `sketch` state in `src/state/store.js`:
+
+```javascript
+solverBackend: 'native',  // 'native' | 'slvs'
+```
+
+#### Single dispatch point in `sketchService.js`
+
+Replace the dual-solver branching in `dragHandler.js` (`onSelectMouseMove`
+lines 88–110, `onCanvasMouseUp` lines 47–77) and `_reconvergeConstraints()`
+(lines 255–258) with one dispatch method on the service:
+
+```javascript
+_solve(sketch, movedPoints) {
+  if (this.store.state.sketch.solverBackend === 'slvs' && this._slvsAdapter?.ready) {
+    return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
+  }
+  // existing native path
+  if (this._useGlobalSolver) return this._globalConstraintSolver.solve(sketch, movedPoints);
+  for (const p of movedPoints) this._constraintSolver.solveConstraintsForPoint(sketch, p, null, {});
+  return 0;
+}
+```
+
+Adapter loads lazily in the constructor:
+
+```javascript
+constructor(store) {
+  // ...existing...
+  this._slvsAdapter = null;
+  if (store.state.sketch.solverBackend === 'slvs') this._initSlvsAdapter();
+}
+_initSlvsAdapter() {
+  this._slvsAdapter = new SlvsAdapter();
+  this._slvsAdapter.init().catch(e => console.error('SlvsAdapter init failed', e));
+}
+```
+
+The native path stays the default; the WASM only downloads when the flag flips.
+
+### Phase 4 — Validate, then delete
+
+1. **E2E validation** — run `e2e/sketchConstraints.spec.js` with
+   `solverBackend: 'slvs'`. The existing scenarios (perpendicularity, dimension
+   locking, coincident, midpoint, equal) are the source of truth per the
+   e2e-first testing approach in `AGENTS.md`. Run them under both backends.
+2. **Result code mapping** — map SolveSpace `SolveResult` codes to user-facing
+   feedback:
+   - `RESULT.OK` → success
+   - `RESULT.DIDNT_CONVERGE` → "constraint system could not be satisfied"
+   - `RESULT.SINGULAR_JACOBIAN` → "over-constrained or redundant"
+   - `RESULT.TOO_MANY_UNKNOWNS` → "sketch too large for solver"
+3. **Flip default** to `'slvs'` once e2e is green.
+4. **Delete** the now-redundant native solver modules:
+
+| File | Reason |
+|---|---|
+| `solver/globalConstraintSolver.js` | Replaced by SolveSpace |
+| `solver/constraintErrorTerms.js` | Error functions no longer needed |
+| `solver/hardConstraintPropagator.js` | SolveSpace handles hard constraints |
+| `solver/dofAnalyzer.js` | SolveSpace reports DOF via result codes |
+| `solver/overconstraintChecker.js` | SolveSpace detects overconstraint internally |
+| `solver/perpendicularFeasibility.js` | SolveSpace rejects infeasible systems on solve |
+| `solver/coincidentSolver.js` | Evaluate — keep only if local fallback still uses it |
+| `solver/dragConstraintApplier.js` | Evaluate — keep only if local fallback still uses it |
+
+### Files touched (summary)
+
+| Phase | File | Action |
+|---|---|---|
+| 1 | `vendor/solver-wasm` (submodule, fork of `solvespace/solvespace`) | Add |
+| 1 | `scripts/build-slvs.mjs` | New |
+| 1 | `public/wasm/slvs.js` | New (built artifact, ~6.2 MB single-file) |
+| 1 | `LICENSE` | New — GPL-3.0-or-later (required by SolveSpace licensing) |
+| 1 | `package.json` | Add `"license": "GPL-3.0-or-later"` |
+| 1 | `AGENTS.md` | Document Emscripten build + GPL-3.0 license note |
+| 2 | `src/services/sketch/solver/slvsAdapter.js` | New |
+| 3 | `src/state/store.js` | Add `solverBackend` flag |
+| 3 | `src/services/sketch/sketchService.js` | Add `_solve` dispatch + lazy adapter init |
+| 3 | `src/services/sketch/interactions/dragHandler.js` | Replace dual-solver branches with `service._solve` |
+| 4 | `e2e/sketchConstraints.spec.js` | Add `solverBackend: 'slvs'` run |
+| 4 | `src/services/sketch/solver/*.js` | Delete redundant modules |
 
 ---
 

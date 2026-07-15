@@ -44,37 +44,13 @@ export function onCanvasMouseUp(service, ) {
       // kinds only take effect after the user has released the point.
       for (const dim of service.store.state.sketch.dimensions) dim.recompute();
       const movedPoints = new Set([draggedPoint]);
-      if (service._useGlobalSolver) {
-        service._globalConstraintSolver.solve(service.store.state.sketch, movedPoints);
-      } else {
-        service._constraintSolver.solveConstraintsForPoint(
-          service.store.state.sketch,
-          draggedPoint,
-          null,
-          {}
-        );
-      }
+      service._solve(service.store.state.sketch, movedPoints);
       service._flushSketchArrays(this);
       service._rebuildObjects(this);
     } else if (draggedLine) {
       for (const dim of service.store.state.sketch.dimensions) dim.recompute();
       const movedPoints = new Set([draggedLine.start, draggedLine.end]);
-      if (service._useGlobalSolver) {
-        service._globalConstraintSolver.solve(service.store.state.sketch, movedPoints);
-      } else {
-        service._constraintSolver.solveConstraintsForPoint(
-          service.store.state.sketch,
-          draggedLine.start,
-          null,
-          {}
-        );
-        service._constraintSolver.solveConstraintsForPoint(
-          service.store.state.sketch,
-          draggedLine.end,
-          null,
-          {}
-        );
-      }
+      service._solve(service.store.state.sketch, movedPoints);
       service._flushSketchArrays(this);
       service._rebuildObjects(this);
     }
@@ -85,22 +61,12 @@ export function onSelectMouseMove(service, position, modifiers = {}) {
       service._dragPoint.x = position.x;
       service._dragPoint.y = position.y;
 
-      if (service._useGlobalSolver) {
-        // Global solver handles all constraints simultaneously
-        const movedPoints = new Set([service._dragPoint]);
-        const result = service._globalConstraintSolver.solve(service.store.state.sketch, movedPoints);
+      const movedPoints = new Set([service._dragPoint]);
+      const result = service._solve(service.store.state.sketch, movedPoints);
 
-        // If global solver returns null (too many driven dimensions), fall back to local solver
-        if (result === null) {
-          service._constraintSolver.solveConstraintsForPoint(
-            service.store.state.sketch,
-            service._dragPoint,
-            originalPosition,
-            modifiers
-          );
-        }
-      } else {
-        // Local solver (current approach)
+      // If the SLVS or global solver returns null (over-constrained),
+      // fall back to the local solver for graceful degradation.
+      if (result === null && !service._slvsAdapter?.ready) {
         service._constraintSolver.solveConstraintsForPoint(
           service.store.state.sketch,
           service._dragPoint,
@@ -136,9 +102,11 @@ export function onSelectMouseMove(service, position, modifiers = {}) {
       if (!service._dragLine.start.isAnchor) movedPoints.add(service._dragLine.start);
       if (!service._dragLine.end.isAnchor) movedPoints.add(service._dragLine.end);
 
-      if (service._useGlobalSolver && movedPoints.size > 0) {
-        const result = service._globalConstraintSolver.solve(service.store.state.sketch, movedPoints);
-        if (result === null) {
+      if (movedPoints.size > 0) {
+        const result = service._solve(service.store.state.sketch, movedPoints);
+
+        // Fallback to local solver if the global/SLVS solver fails
+        if (result === null && !service._slvsAdapter?.ready) {
           for (const point of movedPoints) {
             service._constraintSolver.solveConstraintsForPoint(
               service.store.state.sketch,
@@ -147,15 +115,6 @@ export function onSelectMouseMove(service, position, modifiers = {}) {
               modifiers
             );
           }
-        }
-      } else {
-        for (const point of movedPoints) {
-          service._constraintSolver.solveConstraintsForPoint(
-            service.store.state.sketch,
-            point,
-            { x: point.x - dx, y: point.y - dy },
-            modifiers
-          );
         }
       }
 

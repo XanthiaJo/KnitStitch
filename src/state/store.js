@@ -40,6 +40,7 @@ class Store {
         snapCandidate: null,
         pendingDimEdit: null,
         isPerpendicularSnapActive: false,
+        solverBackend: 'slvs', // 'native' | 'slvs'
       }
     };
     this.listeners = new Set();

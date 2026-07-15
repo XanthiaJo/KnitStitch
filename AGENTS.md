@@ -26,7 +26,26 @@ npm install
 npm run dev      # Vite dev server at http://localhost:5173
 npm run build    # Production build to dist/
 npm run preview  # Serve the built dist/ locally
+npm run build-info       # Generate src/buildInfo.js + CHANGELOG.md from git history
+npm run build-changelog  # Generate just CHANGELOG.md
 ```
+
+## Versioning and Changelog
+
+This project uses Conventional Commits to drive automatic versioning and
+changelog generation, ported from the CraftCMS `GenerateBuildInfo.php` script.
+
+- `scripts/generate-build-info.mjs` - Node.js build info generator. Reads git
+  tags and conventional commit messages to derive a version. Supports
+  `--format=js` (outputs `window.BUILD_INFO` object) and `--format=md` (outputs
+  markdown changelog). Run via `npm run build-info` or `npm run build-changelog`.
+- `src/buildInfo.js` - generated JS file exposing `window.BUILD_INFO` with
+  version, production version, commit SHA, and commit count
+- `CHANGELOG.md` - generated markdown changelog grouped by change type
+  (breaking, feature, fix, docs, refactor, test, chore, other)
+- `docs/craftcms-changelog-history.twig` - historical changelog from the
+  CraftCMS era, preserved as-is for reference. The going-forward changelog is
+  generated from KnitStitch's own git log.
 
 ## Architecture
 
@@ -43,6 +62,7 @@ Primary source layout:
 - `src/utils/geometry.js` - pure geometry helpers (distance, nearestPoint, applyAngleSnap)
 - `unit/` - Vitest unit tests (pure logic)
 - `e2e/` - Playwright E2E tests (user interaction coverage)
+- `scripts/` - build tooling (`generate-build-info.mjs` version/changelog generator)
 - `docs/` - human-level docs: architecture overview, project map, roadmap, testing guide
 - `docs/agents/` - agent-level docs: low-level architecture, import/export maps, detailed roadmap
 

@@ -1,6 +1,7 @@
 import { STROKE_COLOR_OPTIONS } from './render/styleOptions.js';
 import { ConstraintSolver } from './solver/constraintSolver.js';
 import { GlobalConstraintSolver } from './solver/globalConstraintSolver.js';
+import { SlvsAdapter } from './solver/slvsAdapter.js';
 import { ToolRegistry } from './tools/toolRegistry.js';
 import { HistoryManager } from './state/historyManager.js';
 import { checkOverconstraints } from './solver/overconstraintChecker.js';
@@ -34,6 +35,8 @@ export class SketchService {
     this._constraintSolver = new ConstraintSolver();
     this._globalConstraintSolver = new GlobalConstraintSolver();
     this._useGlobalSolver = true; // Set to true to use global solver
+    this._slvsAdapter = null;
+    if (store.state.sketch.solverBackend === 'slvs') this._initSlvsAdapter();
     this._toolRegistry = new ToolRegistry(this);
     this._history = new HistoryManager(this);
 
@@ -253,8 +256,41 @@ export class SketchService {
    * simultaneously.
    */
   _reconvergeConstraints() {
+    if (this._slvsAdapter?.ready) {
+      this._slvsAdapter.solveAndWriteBack(this.store.state.sketch, new Set());
+      this._flushSketchArrays(this);
+      this._rebuildObjects(this);
+      return;
+    }
     if (!this._globalConstraintSolver) return;
     this._globalConstraintSolver.solve(this.store.state.sketch, new Set());
+  }
+
+  _initSlvsAdapter() {
+    this._slvsAdapter = new SlvsAdapter(this.store);
+    this._slvsAdapter.init().catch((e) => console.error('SlvsAdapter init failed', e));
+  }
+
+  /**
+   * Single dispatch point for constraint solving. Routes to the SolveSpace
+   * WASM backend when solverBackend === 'slvs' and the adapter is ready,
+   * otherwise falls through to the existing native solver path.
+   *
+   * @param {object} sketch - the sketch state
+   * @param {Set} movedPoints - points directly manipulated by the user
+   * @returns {number|null} result code or iteration count
+   */
+  _solve(sketch, movedPoints) {
+    if (this._slvsAdapter?.ready) {
+      return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
+    }
+    if (this._useGlobalSolver) {
+      return this._globalConstraintSolver.solve(sketch, movedPoints);
+    }
+    for (const p of movedPoints) {
+      this._constraintSolver.solveConstraintsForPoint(sketch, p, null, {});
+    }
+    return 0;
   }
 
   _setPreviewLine(line) {
