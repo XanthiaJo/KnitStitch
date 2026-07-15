@@ -1,6 +1,7 @@
 import { SketchConstraint } from '../../../models/sketch/sketchConstraint.js';
 import { ConstraintSubMode } from '../constants.js';
 import { wouldOverconstrain } from '../solver/dofAnalyzer.js';
+import { canAddPerpendicularConstraint } from '../solver/perpendicularFeasibility.js';
 import {
   assignConstraintIds,
   findSharedPoint,
@@ -72,18 +73,33 @@ export class ConstraintTool {
 
   /**
    * Commit a newly created constraint: record snapshot, push, assign IDs,
-   * enforce, reconverge, recompute dims, select, flush, rebuild.
+   * reconverge (the SolveSpace solver enforces the new constraint),
+   * recompute dims, select, flush, rebuild.
+   *
+   * The constraint's pointA (if any) is passed as the preferred move
+   * target so the solver moves that point rather than distributing
+   * movement across all free points.
+   *
    * @param {string} description - undo snapshot label
    * @param {SketchConstraint} constraint - the constraint to commit
-   * @param {function|null} enforceFn - optional enforcement callback
    * @returns {true}
    */
-  _commit(description, constraint, enforceFn = null) {
+  _commit(description, constraint) {
     this.service._recordSnapshot(description);
     this.sketch.constraints.push(constraint);
     assignConstraintIds(this.service);
-    if (enforceFn) enforceFn();
-    this.service._reconvergeConstraints();
+    // Build the set of points the solver should prefer to move.
+    // For point-line constraints (midpoint), pointA is the point to move.
+    // For line-line constraints (perpendicular, equal, H/V), the solver
+    // should move whichever endpoints are free — pass empty set and let
+    // the solver distribute.
+    const preferredMove = new Set();
+    if (constraint.pointA && !constraint.pointA.isAnchor) {
+      preferredMove.add(constraint.pointA);
+    }
+    this.service._reconvergeConstraints(
+      preferredMove.size > 0 ? preferredMove : null,
+    );
     for (const dim of this.sketch.dimensions) dim.recompute();
     this.service.selectConstraint(constraint);
     flushSketchArrays(this.service);
@@ -221,7 +237,7 @@ export class ConstraintTool {
       return true;
     }
 
-    if (!this.service._constraintSolver.canAddPerpendicularConstraint(
+    if (!canAddPerpendicularConstraint(
       this.sketch, firstLine, secondLine,
     )) {
       return this._reject('Constraint not possible', position);
@@ -242,11 +258,7 @@ export class ConstraintTool {
       'Perpendicular', anchor, null, firstLine, secondLine,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add perpendicular constraint', constraint, () =>
-      this.service._constraintSolver.enforcePerpendicularConstraint(
-        this.sketch, constraint, secondLine,
-      ),
-    );
+    return this._commit('Add perpendicular constraint', constraint);
   }
 
   _tryCreateMidpointConstraint(line, point, position = null) {
@@ -273,9 +285,7 @@ export class ConstraintTool {
       'Midpoint', point, null, line, null,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add midpoint constraint', constraint, () =>
-      this.service._constraintSolver.enforceMidpointConstraint(this.sketch, constraint),
-    );
+    return this._commit('Add midpoint constraint', constraint);
   }
 
   _tryCreateMidpointLineLineConstraint(firstLine, secondLine, position = null) {
@@ -303,9 +313,7 @@ export class ConstraintTool {
       'Midpoint', null, null, firstLine, secondLine,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add midpoint constraint', constraint, () =>
-      this.service._constraintSolver.enforceMidpointConstraint(this.sketch, constraint),
-    );
+    return this._commit('Add midpoint constraint', constraint);
   }
 
   _tryCreateEqualConstraint(firstLine, secondLine, position = null) {
@@ -330,11 +338,7 @@ export class ConstraintTool {
       'Equal', null, null, firstLine, secondLine,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add equal constraint', constraint, () =>
-      this.service._constraintSolver.enforceEqualConstraint(
-        this.sketch, constraint, secondLine,
-      ),
-    );
+    return this._commit('Add equal constraint', constraint);
   }
 
   _tryCreateAxisConstraint(line, position = null) {
@@ -361,13 +365,7 @@ export class ConstraintTool {
       type, null, null, line, null,
       this.service._nextConstraintId++,
     );
-    return this._commit(`Add ${type.toLowerCase()} constraint`, constraint, () => {
-      if (type === 'Horizontal') {
-        this.service._constraintSolver.enforceHorizontalConstraint(this.sketch, constraint);
-      } else {
-        this.service._constraintSolver.enforceVerticalConstraint(this.sketch, constraint);
-      }
-    });
+    return this._commit(`Add ${type.toLowerCase()} constraint`, constraint);
   }
 
   _tryCreateCoincidentConstraint(firstPoint, secondPoint, position = null) {

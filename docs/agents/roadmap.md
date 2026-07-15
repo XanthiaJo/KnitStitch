@@ -195,19 +195,12 @@ solverBackend: 'native',  // 'native' | 'slvs'
 
 #### Single dispatch point in `sketchService.js`
 
-Replace the dual-solver branching in `dragHandler.js` (`onSelectMouseMove`
-lines 88–110, `onCanvasMouseUp` lines 47–77) and `_reconvergeConstraints()`
-(lines 255–258) with one dispatch method on the service:
+The dual-solver branching has been replaced with one dispatch method:
 
 ```javascript
 _solve(sketch, movedPoints) {
-  if (this.store.state.sketch.solverBackend === 'slvs' && this._slvsAdapter?.ready) {
-    return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
-  }
-  // existing native path
-  if (this._useGlobalSolver) return this._globalConstraintSolver.solve(sketch, movedPoints);
-  for (const p of movedPoints) this._constraintSolver.solveConstraintsForPoint(sketch, p, null, {});
-  return 0;
+  if (!this._slvsAdapter?.ready) return null;
+  return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
 }
 ```
 
@@ -239,19 +232,21 @@ The native path stays the default; the WASM only downloads when the flag flips.
    - `RESULT.DIDNT_CONVERGE` → "constraint system could not be satisfied"
    - `RESULT.SINGULAR_JACOBIAN` → "over-constrained or redundant"
    - `RESULT.TOO_MANY_UNKNOWNS` → "sketch too large for solver"
-3. **Flip default** to `'slvs'` once e2e is green.
-4. **Delete** the now-redundant native solver modules:
+3. **Flip default** to `'slvs'` once e2e is green. ✅ Done
+4. **Delete** the now-redundant native solver modules: ✅ Done
 
-| File | Reason |
+| File | Status |
 |---|---|
-| `solver/globalConstraintSolver.js` | Replaced by SolveSpace |
-| `solver/constraintErrorTerms.js` | Error functions no longer needed |
-| `solver/hardConstraintPropagator.js` | SolveSpace handles hard constraints |
-| `solver/dofAnalyzer.js` | SolveSpace reports DOF via result codes |
-| `solver/overconstraintChecker.js` | SolveSpace detects overconstraint internally |
-| `solver/perpendicularFeasibility.js` | SolveSpace rejects infeasible systems on solve |
-| `solver/coincidentSolver.js` | Evaluate — keep only if local fallback still uses it |
-| `solver/dragConstraintApplier.js` | Evaluate — keep only if local fallback still uses it |
+| `solver/globalConstraintSolver.js` | Deleted — replaced by SolveSpace |
+| `solver/constraintErrorTerms.js` | Deleted — error functions no longer needed |
+| `solver/hardConstraintPropagator.js` | Deleted — SolveSpace handles hard constraints |
+| `solver/constraintSolver.js` | Deleted — replaced by SolveSpace |
+| `solver/coincidentSolver.js` | Deleted — SolveSpace handles coincident constraints |
+| `solver/dragConstraintApplier.js` | Deleted — SolveSpace handles drag-time enforcement |
+| `solver/dimensionSolver.js` | Deleted — SolveSpace handles driven dimensions |
+| `solver/dofAnalyzer.js` | Kept — still used by constraintTool/dimensionTool for overconstraint checking |
+| `solver/overconstraintChecker.js` | Kept — still used by sketchService/sketchPanelController |
+| `solver/perpendicularFeasibility.js` | Kept — pure graph-theory check, provides user-facing rejection before solver |
 
 ### Files touched (summary)
 
@@ -333,7 +328,7 @@ while error > 1e-6 and iterations < 100:
 | Add regression tests | Whenever changing constraint solving, selection, drag behaviour, or persistence. |
 | Keep `main.js` as bootstrap | Do not put business logic in `main.js`. |
 | Generate UI text from shared helpers | Keep list view and canvas view in sync. |
-| New constraint types | Belong in `constraintTool.js` (creation) and `constraintSolver.js`/`globalConstraintSolver.js` (enforcement), not `sketchService.js`. |
+| New constraint types | Belong in `constraintTool.js` (creation) and `slvsAdapter.js` (solver mapping), not `sketchService.js`. |
 | New tool workflows | Belong in their own tool class, not inlined in `sketchService.js`. |
 
 ---
@@ -381,25 +376,21 @@ The global solver architecture makes adding new constraints straightforward. Eac
 ### Implementation pattern
 
 ```javascript
-// 1. Add error function to globalConstraintSolver.js
-_addParallelGradients(constraint, sketch, gradients) {
-    const v1 = {
-        x: constraint.lineA.end.x - constraint.lineA.start.x,
-        y: constraint.lineA.end.y - constraint.lineA.start.y
-    };
-    const v2 = {
-        x: constraint.lineB.end.x - constraint.lineB.start.x,
-        y: constraint.lineB.end.y - constraint.lineB.start.y
-    };
-    const cross = v1.x * v2.y - v1.y * v2.x;
-    // Add gradients to movable points...
+// 1. Add constraint mapping to slvsAdapter.js _addConstraint()
+case 'Parallel': {
+  if (c.lineA && c.lineB) {
+    const aH = this.lineHandles.get(c.lineA.id);
+    const bH = this.lineHandles.get(c.lineB.id);
+    if (aH && bH) slvs.parallel(this.g, aH, bH, this.wp);
+  }
+  break;
 }
 
 // 2. Add to SketchObjectKind constants
 Parallel: 5,
 
 // 3. Add UI button and constraint tool workflow
-// 4. Add feasibility checks if needed
+// 4. Add feasibility checks if needed (perpendicularFeasibility.js pattern)
 ```
 
 ### Solver benefits for new constraints

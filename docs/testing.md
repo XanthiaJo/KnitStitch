@@ -49,11 +49,11 @@ Avoid unit tests for:
 
 Create a file under `unit/` ending in `.test.js`. Import the module under test from `../src/...`.
 
-Example pattern from `equalConstraint.test.js`:
+Example pattern:
 
 ```js
 import { describe, it, expect } from 'vitest';
-import { ConstraintSolver } from '../src/services/sketch/solver/constraintSolver.js';
+import { analyzeDof } from '../src/services/sketch/solver/dofAnalyzer.js';
 import { SketchPoint } from '../src/models/sketch/sketchPoint.js';
 import { SketchLine } from '../src/models/sketch/sketchLine.js';
 ```

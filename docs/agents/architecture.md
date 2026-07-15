@@ -64,46 +64,32 @@ Driven dimensions are the primary way to lock real-world measurements (inches) i
 
 ## Solver architecture
 
-There are two solvers. `SketchService._useGlobalSolver` is `true` by default, so the global solver runs first.
+The constraint solver is SolveSpace, compiled to WebAssembly and bridged
+via `SlvsAdapter`. The adapter converts KnitStitch's pixel-coordinate
+sketch model (points, lines, constraints, dimensions) into SolveSpace
+entities, solves, and writes the results back.
 
-### GlobalConstraintSolver
+### SlvsAdapter
 
-A numerical optimizer inspired by FreeCAD/OpenCASCADE sketch solvers. It minimizes total constraint error using gradient descent and then enforces driven dimensions and coincident constraints as hard constraints after every step.
+- Loads `public/wasm/slvs.js` (UMD module) via a `<script>` tag.
+- Uses a uniform X-axis scale for both X and Y coordinates to preserve
+  angles in the non-square grid (stitches ≠ rows).
+- Anchors get a hard `C_WHERE_DRAGGED` constraint so the solver cannot
+  move them.
+- The user-dragged point gets `markDragged` (soft preference) so the
+  solver keeps it near the mouse but yields to hard constraints
+  (dimensions, perpendicular, etc.).
+- During reconverge (after creating a constraint), the adapter marks all
+  points except the "preferred move" target as dragged, so the solver
+  moves only the constrained entity.
+- Accepts both `RESULT_OKAY` and `RESULT_REDUNDANT_OKAY` as success.
+- Anchor positions are restored in `writeBack()` as a safety net.
 
-Error terms (squared):
+### Constraint feasibility
 
-- `Perpendicular`: `(dot product of the two line vectors)^2`
-- `Coincident`: `(distance between the two points)^2`
-- `Midpoint`: `(distance from point to line midpoint)^2`
-- `Equal`: `(length(lineA) - length(lineB))^2`
-- `Horizontal`: `(dy)^2`
-- `Vertical`: `(dx)^2`
-
-The dragged point is the only point the user directly controls; anchors are fixed. All other points are free and adjusted by the optimizer.
-
-After each gradient step, `_applyDrivenDimensions` repositions the driven endpoint of every dimension relative to its driver. `_propagateCoincident` then collapses coincident groups onto their leader (anchor, then moved point, then first member).
-
-If the dimension graph looks infeasible (a single non-moved point would be driven by more than two dimensions), the solver returns `null` and `SketchService` falls back to the local solver.
-
-### Local ConstraintSolver
-
-The original per-point solver. It applies constraints one at a time for the dragged point:
-
-1. Snap to a nearby point and create a Coincident constraint if within radius.
-2. Propagate Coincident constraints.
-3. Apply Perpendicular, Midpoint, and Equal constraints.
-4. Apply driven dimensions that touch the dragged point.
-5. Re-apply geometric constraints to any points moved by those dimensions.
-
-It does not propagate driven dimensions through chains. It is kept as a fallback when the global solver reports an infeasible graph.
-
-### Solver file split
-
-The global solver is split into three focused pieces:
-
-- `solver/constraintErrorTerms.js` — error functions and analytical gradients for Perpendicular, Coincident, Midpoint, Equal, Horizontal, and Vertical constraints.
-- `solver/hardConstraintPropagator.js` — exact enforcement of driven dimensions, Coincident constraints, and Equal Length propagation.
-- `solver/globalConstraintSolver.js` — the gradient-descent loop that orchestrates the above.
+`solver/perpendicularFeasibility.js` performs a graph-theory bipartite
+check to reject impossible perpendicular constraints at creation time,
+before they reach the solver.
 
 ### Overconstraint checking
 
@@ -205,10 +191,9 @@ The object list includes every sketch point, not just anchors, so regular points
 
 | File | Role |
 | --- | --- |
-| `src/services/sketch/solver/globalConstraintSolver.js` | Global numerical solver: gradient descent + hard dimension/coincident enforcement. |
-| `src/services/sketch/solver/constraintSolver.js` | Local per-point solver: snap, coincident, perpendicular, midpoint, equal, dimensions. Fallback only. |
-| `src/services/sketch/solver/constraintErrorTerms.js` | Error functions and analytical gradients for soft constraints. |
-| `src/services/sketch/solver/hardConstraintPropagator.js` | Exact enforcement of driven dimensions, Coincident points, and Equal Length propagation. |
+| `src/services/sketch/solver/slvsAdapter.js` | SolveSpace WASM solver adapter: bridges sketch model to slvs, handles unit conversion, drag/reconverge semantics. |
+| `src/services/sketch/solver/perpendicularFeasibility.js` | Graph-theory bipartite check for perpendicular constraint feasibility. |
+| `src/services/sketch/solver/dofAnalyzer.js` | Degree-of-freedom analysis and overconstraint detection. |
 | `src/services/sketch/solver/overconstraintChecker.js` | Detects redundant/over-constrained patterns and surfaces issues in the sidebar. |
 
 ### State

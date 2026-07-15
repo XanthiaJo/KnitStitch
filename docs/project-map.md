@@ -76,10 +76,9 @@ For low-level import/export maps and dependency graphs, see [agents/project-map.
 
 | File | Summary |
 | --- | --- |
-| `src/services/sketch/solver/globalConstraintSolver.js` | Global gradient-descent solver (default). |
-| `src/services/sketch/solver/constraintSolver.js` | Local per-point solver (fallback). |
-| `src/services/sketch/solver/constraintErrorTerms.js` | Error functions and analytical gradients for soft constraints. |
-| `src/services/sketch/solver/hardConstraintPropagator.js` | Exact enforcement of driven dimensions, coincident points, and equal length. |
+| `src/services/sketch/solver/slvsAdapter.js` | SolveSpace WASM constraint solver adapter (bridges sketch model to slvs). |
+| `src/services/sketch/solver/perpendicularFeasibility.js` | Graph-theory bipartite check for perpendicular constraint feasibility. |
+| `src/services/sketch/solver/dofAnalyzer.js` | Degree-of-freedom analysis and overconstraint detection. |
 | `src/services/sketch/solver/overconstraintChecker.js` | Detects redundant/over-constrained patterns. |
 
 ## Sketch State

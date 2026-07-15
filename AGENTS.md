@@ -80,7 +80,7 @@ The current direction is:
 
 - `sketchService.js` acts as the coordinator
 - extracted helpers under `src/services/sketch/` own pure or policy-heavy logic
-- `constraintSolver.js` owns geometric enforcement, not UI selection flow
+- `slvsAdapter.js` bridges the sketch model to the SolveSpace WASM constraint solver
 - `dimensionTool.js` owns the dimension lifecycle (placement, edit overlay, driven-value application)
 - `constraintTool.js` owns the constraint creation workflow (line selection, feasibility check, commit)
 - pure geometry helpers (`distance`, `nearestPoint`, `applyAngleSnap`) live in `src/utils/geometry.js`

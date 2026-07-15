@@ -76,10 +76,9 @@ For the surface-level file summaries, see [../project-map.md](../project-map.md)
 
 | File | Lines | Key imports | Exports |
 | --- | --- | --- | --- |
-| `src/services/sketch/solver/globalConstraintSolver.js` | 125 | constraintErrorTerms, hardConstraintPropagator | `GlobalConstraintSolver` class |
-| `src/services/sketch/solver/constraintSolver.js` | 637 | geometry, constants | `ConstraintSolver` class |
-| `src/services/sketch/solver/constraintErrorTerms.js` | 228 | — | Error functions + analytical gradients |
-| `src/services/sketch/solver/hardConstraintPropagator.js` | 317 | geometry | Hard constraint enforcement functions |
+| `src/services/sketch/solver/slvsAdapter.js` | ~300 | — (loads `public/wasm/slvs.js`) | `SlvsAdapter` class |
+| `src/services/sketch/solver/perpendicularFeasibility.js` | 110 | geometry | `canAddPerpendicularConstraint` function |
+| `src/services/sketch/solver/dofAnalyzer.js` | ~400 | geometry | `analyzeDof`, `wouldOverconstrain` |
 | `src/services/sketch/solver/overconstraintChecker.js` | 140 | — | `checkOverconstraints` function |
 
 ### Sketch — state
@@ -157,10 +156,7 @@ main.js
   │     │     ├─> tools/anchorTool.js
   │     │     └─> templates/templateTool.js
   │     │           └─> templates/sockMeasurements.js
-  │     ├─> solver/constraintSolver.js
-  │     ├─> solver/globalConstraintSolver.js
-  │     │     ├─> solver/constraintErrorTerms.js
-  │     │     └─> solver/hardConstraintPropagator.js
+  │     ├─> solver/slvsAdapter.js
   │     ├─> solver/overconstraintChecker.js
   │     ├─> state/historyManager.js
   │     │     └─> state/sketchSnapshot.js

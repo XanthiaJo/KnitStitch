@@ -13,14 +13,10 @@ npx playwright test     # e2e tests
 
 | File | What it covers |
 | --- | --- |
-| `axisConstraint.test.js` | Horizontal/Vertical constraint creation and solver enforcement. |
 | `closedShapeFill.test.js` | Closed-loop detection from sketch lines and 50%+ area cell fill computation. |
 | `dofAnalyzer.test.js` | Jacobian-based DOF analysis for over-constraint detection. |
-| `equalConstraint.test.js` | Equal length constraint creation, solver enforcement, and undo. |
 | `finishedSizeCalculator.test.js` | Finished size calculation from gauge and pattern dimensions. |
-| `globalConstraintSolver.test.js` | Global solver: perpendicular, coincident, midpoint, equal, driven dimensions, BFS propagation. |
 | `gridService.test.js` | Preview cell rebuild, toggle, grid fitting, and cell sizing. |
-| `midpointConstraint.test.js` | Midpoint constraint creation (point-line and line-line), solver enforcement, anchor handling, and endpoint/midpoint dragging. |
 | `overconstraintChecker.test.js` | Over-constraint detection and error reporting. |
 | `selectionSync.test.js` | Selection state sync between models and store. |
 | `store.test.js` | Store get/set/subscribe behaviour. |

@@ -57,23 +57,11 @@ export function onCanvasMouseUp(service, ) {
 }
 export function onSelectMouseMove(service, position, modifiers = {}) {
     if (service._dragPoint && !service._dragPoint.isAnchor) {
-      const originalPosition = { x: service._dragPoint.x, y: service._dragPoint.y };
       service._dragPoint.x = position.x;
       service._dragPoint.y = position.y;
 
       const movedPoints = new Set([service._dragPoint]);
-      const result = service._solve(service.store.state.sketch, movedPoints);
-
-      // If the SLVS or global solver returns null (over-constrained),
-      // fall back to the local solver for graceful degradation.
-      if (result === null && !service._slvsAdapter?.ready) {
-        service._constraintSolver.solveConstraintsForPoint(
-          service.store.state.sketch,
-          service._dragPoint,
-          originalPosition,
-          modifiers
-        );
-      }
+      service._solve(service.store.state.sketch, movedPoints);
 
       service._assignConstraintIds(this);
       // During a drag, preserve the dimension kind so the solver doesn't switch a
@@ -103,19 +91,7 @@ export function onSelectMouseMove(service, position, modifiers = {}) {
       if (!service._dragLine.end.isAnchor) movedPoints.add(service._dragLine.end);
 
       if (movedPoints.size > 0) {
-        const result = service._solve(service.store.state.sketch, movedPoints);
-
-        // Fallback to local solver if the global/SLVS solver fails
-        if (result === null && !service._slvsAdapter?.ready) {
-          for (const point of movedPoints) {
-            service._constraintSolver.solveConstraintsForPoint(
-              service.store.state.sketch,
-              point,
-              { x: point.x - dx, y: point.y - dy },
-              modifiers
-            );
-          }
-        }
+        service._solve(service.store.state.sketch, movedPoints);
       }
 
       service._assignConstraintIds(this);

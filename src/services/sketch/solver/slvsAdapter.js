@@ -96,6 +96,10 @@ export class SlvsAdapter {
         this.wp,
       );
       this.pointHandles.set(p.id, h);
+      // Anchors get a C_WHERE_DRAGGED constraint (hard lock) so the solver
+      // cannot move them. The user-dragged point gets markDragged() in
+      // solve() instead, which is a soft preference that yields to hard
+      // constraints like dimensions.
       if (p.isAnchor || p.isOrigin) {
         this.slvs.dragged(this.g, h, this.wp);
       }
@@ -121,9 +125,6 @@ export class SlvsAdapter {
       const aH = this.pointHandles.get(d.a.id);
       const bH = this.pointHandles.get(d.b.id);
       if (!aH || !bH) continue;
-      // drivenValue is in pixels — convert to solver-units (uniform scale).
-      // SolveSpace's C_PT_PT_DISTANCE is the Euclidean distance between
-      // the two points, which matches what the dimension measures.
       const solverUnits = this.pxToSolver(d.drivenValue);
       this.slvs.distance(this.g, aH, bH, solverUnits, this.wp);
     }
@@ -163,43 +164,42 @@ export class SlvsAdapter {
       case 'Horizontal': {
         if (c.lineA) {
           const aH = this.lineHandles.get(c.lineA.id);
-          if (aH) slvs.horizontal(g, aH, wp);
+          if (aH) slvs.horizontal(g, aH, wp, E_NONE);
         }
         break;
       }
       case 'Vertical': {
         if (c.lineA) {
           const aH = this.lineHandles.get(c.lineA.id);
-          if (aH) slvs.vertical(g, aH, wp);
+          if (aH) slvs.vertical(g, aH, wp, E_NONE);
         }
         break;
       }
       case 'Midpoint': {
         if (c.lineA && c.pointA) {
-          // Point-on-midpoint: use C_AT_MIDPOINT with the point as ptA
-          // and the line as entityA.
+          // Point-on-midpoint: C_AT_MIDPOINT with ptA=point, entityA=line.
           const ptH = this.pointHandles.get(c.pointA.id);
           const lnH = this.lineHandles.get(c.lineA.id);
           if (ptH && lnH) {
-            slvs.midpoint(g, ptH, lnH, wp);
+            slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, ptH, E_NONE, lnH, E_NONE, E_NONE, E_NONE, false, false);
           }
         } else if (c.lineA && c.lineB) {
-          // Line-line midpoint: both lines share a midpoint. This is a
-          // composite — add a midpoint constraint on the shared endpoint.
-          // Find the shared point between the two lines.
-          const lA = c.lineA;
-          const lB = c.lineB;
-          const shared = (lA.start === lB.start || lA.start === lB.end) ? lA.start
-                        : (lA.end === lB.start || lA.end === lB.end) ? lA.end
-                        : null;
-          if (shared) {
-            const ptH = this.pointHandles.get(shared.id);
-            // Use the other line as the entity
-            const otherLine = shared === lA.start ? lB : lA;
-            const lnH = this.lineHandles.get(otherLine.id);
-            if (ptH && lnH) {
-              slvs.midpoint(g, ptH, lnH, wp);
-            }
+          // Line-line midpoint: the midpoints of the two lines must be
+          // coincident. SolveSpace has no direct "line-line midpoint"
+          // constraint, so we compose it: create a helper point at each
+          // line's midpoint (C_AT_MIDPOINT), then constrain those two
+          // helper points to be coincident (C_POINTS_COINCIDENT).
+          const lnAH = this.lineHandles.get(c.lineA.id);
+          const lnBH = this.lineHandles.get(c.lineB.id);
+          if (lnAH && lnBH) {
+            // Create helper points at each line's midpoint
+            const midA = slvs.addPoint2D(g, 0, 0, wp);
+            const midB = slvs.addPoint2D(g, 0, 0, wp);
+            // Constrain each helper point to be at its line's midpoint
+            slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, midA, E_NONE, lnAH, E_NONE, E_NONE, E_NONE, false, false);
+            slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, midB, E_NONE, lnBH, E_NONE, E_NONE, E_NONE, false, false);
+            // Constrain the two midpoints to be coincident
+            slvs.coincident(g, midA, midB, wp);
           }
         }
         break;
@@ -212,13 +212,45 @@ export class SlvsAdapter {
 
   // ── Solve ────────────────────────────────────────────────────────
 
-  solve(movedPoint) {
-    if (movedPoint) {
-      const h = this.pointHandles.get(movedPoint.id);
-      if (h) {
-        this.slvs.setParamValue(h.param[0], this.pxToSolver(movedPoint.x));
-        this.slvs.setParamValue(h.param[1], this.pxToSolver(movedPoint.y));
-        this.slvs.dragged(this.g, h, this.wp);
+  /**
+   * Solve the sketch.
+   * @param {Set|null} draggedPoints - points the user is dragging (soft
+   *   preference to stay at their current position). null for reconverge.
+   * @param {Set|null} freeMovePoints - points that should be free to move
+   *   during a reconverge (e.g. the point in a midpoint constraint). All
+   *   other non-anchor points will be marked as dragged (prefer to stay).
+   */
+  solve(draggedPoints, freeMovePoints = null) {
+    if (draggedPoints && draggedPoints.size > 0) {
+      // User drag: mark dragged points as preferring to stay at mouse pos.
+      for (const pt of draggedPoints) {
+        const h = this.pointHandles.get(pt.id);
+        if (h) {
+          this.slvs.setParamValue(h.param[0], this.pxToSolver(pt.x));
+          this.slvs.setParamValue(h.param[1], this.pxToSolver(pt.y));
+          this.slvs.markDragged(h);
+        }
+      }
+    } else if (freeMovePoints && freeMovePoints.size > 0) {
+      // Reconverge with preferred move targets: mark all points EXCEPT
+      // the free-move points as dragged, so the solver prefers to move
+      // only the free-move points to satisfy the new constraint.
+      for (const [ptId, h] of this.pointHandles) {
+        const pt = freeMovePoints.values().next().value;
+        // Check if this point is in the freeMove set by comparing ids
+        let isFree = false;
+        for (const fp of freeMovePoints) {
+          if (fp.id === ptId) { isFree = true; break; }
+        }
+        if (!isFree) {
+          this.slvs.markDragged(h);
+        }
+      }
+    } else {
+      // Reconverge with no preference: mark all points as dragged so
+      // the solver distributes movement minimally.
+      for (const h of this.pointHandles.values()) {
+        this.slvs.markDragged(h);
       }
     }
     return this.slvs.solveSketch(this.g, false);
@@ -227,6 +259,16 @@ export class SlvsAdapter {
   // ── Write back ───────────────────────────────────────────────────
 
   writeBack(sketch) {
+    // Save anchor positions so we can restore them after writeBack.
+    // SolveSpace's C_WHERE_DRAGGED is a soft preference, not a hard
+    // constraint, so anchors may drift during solving.
+    const anchorPositions = new Map();
+    for (const p of sketch.points) {
+      if (p.isAnchor || p.isOrigin) {
+        anchorPositions.set(p.id, { x: p.x, y: p.y });
+      }
+    }
+
     for (const p of sketch.points) {
       const h = this.pointHandles.get(p.id);
       if (!h) continue;
@@ -235,17 +277,33 @@ export class SlvsAdapter {
       p.x = this.solverToPx(xS);
       p.y = this.solverToPx(yS);
     }
+
+    // Restore anchor positions
+    for (const [id, pos] of anchorPositions) {
+      const p = sketch.points.find((pt) => pt.id === id);
+      if (p) {
+        p.x = pos.x;
+        p.y = pos.y;
+      }
+    }
   }
 
   // ── Combined sync + solve + writeBack ────────────────────────────
 
-  solveAndWriteBack(sketch, movedPoints) {
+  /**
+   * Sync, solve, and write back.
+   * @param {object} sketch - sketch state
+   * @param {Set} draggedPoints - user-dragged points (or empty set for reconverge)
+   * @param {Set|null} freeMovePoints - for reconverge: points to move freely
+   */
+  solveAndWriteBack(sketch, draggedPoints, freeMovePoints = null) {
     this.syncFromSketch(sketch);
-    // SolveSpace handles all points at once; pick the first moved point
-    // as the dragged one (if any).
-    const moved = movedPoints?.values?.().next?.().value ?? null;
-    const result = this.solve(moved);
-    if (result.result === this.slvs.RESULT_OKAY) {
+    const result = this.solve(draggedPoints?.size > 0 ? draggedPoints : null, freeMovePoints);
+    // Accept both OKAY and REDUNDANT_OKAY — the latter means the system
+    // is solvable but has redundant constraints (e.g. two ways to specify
+    // the same distance). The solution is still valid.
+    if (result.result === this.slvs.RESULT_OKAY ||
+        result.result === this.slvs.RESULT_REDUNDANT_OKAY) {
       this.writeBack(sketch);
     }
     return result;

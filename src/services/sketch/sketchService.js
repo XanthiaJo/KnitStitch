@@ -1,6 +1,4 @@
 import { STROKE_COLOR_OPTIONS } from './render/styleOptions.js';
-import { ConstraintSolver } from './solver/constraintSolver.js';
-import { GlobalConstraintSolver } from './solver/globalConstraintSolver.js';
 import { SlvsAdapter } from './solver/slvsAdapter.js';
 import { ToolRegistry } from './tools/toolRegistry.js';
 import { HistoryManager } from './state/historyManager.js';
@@ -32,11 +30,8 @@ export class SketchService {
     this._selectedPoints = new Set();
     this._selectedLines = new Set();
     this._suppressNextClick = false;
-    this._constraintSolver = new ConstraintSolver();
-    this._globalConstraintSolver = new GlobalConstraintSolver();
-    this._useGlobalSolver = true; // Set to true to use global solver
     this._slvsAdapter = null;
-    if (store.state.sketch.solverBackend === 'slvs') this._initSlvsAdapter();
+    this._initSlvsAdapter();
     this._toolRegistry = new ToolRegistry(this);
     this._history = new HistoryManager(this);
 
@@ -255,15 +250,15 @@ export class SketchService {
    * points. The global solver iterates to satisfy all constraints
    * simultaneously.
    */
-  _reconvergeConstraints() {
-    if (this._slvsAdapter?.ready) {
-      this._slvsAdapter.solveAndWriteBack(this.store.state.sketch, new Set());
-      this._flushSketchArrays(this);
-      this._rebuildObjects(this);
-      return;
-    }
-    if (!this._globalConstraintSolver) return;
-    this._globalConstraintSolver.solve(this.store.state.sketch, new Set());
+  _reconvergeConstraints(preferredMovePoints = null) {
+    if (!this._slvsAdapter?.ready) return;
+    this._slvsAdapter.solveAndWriteBack(
+      this.store.state.sketch,
+      new Set(),
+      preferredMovePoints,
+    );
+    this._flushSketchArrays(this);
+    this._rebuildObjects(this);
   }
 
   _initSlvsAdapter() {
@@ -272,25 +267,16 @@ export class SketchService {
   }
 
   /**
-   * Single dispatch point for constraint solving. Routes to the SolveSpace
-   * WASM backend when solverBackend === 'slvs' and the adapter is ready,
-   * otherwise falls through to the existing native solver path.
+   * Single dispatch point for constraint solving. Delegates to the
+   * SolveSpace WASM solver via the SlvsAdapter.
    *
    * @param {object} sketch - the sketch state
    * @param {Set} movedPoints - points directly manipulated by the user
    * @returns {number|null} result code or iteration count
    */
   _solve(sketch, movedPoints) {
-    if (this._slvsAdapter?.ready) {
-      return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
-    }
-    if (this._useGlobalSolver) {
-      return this._globalConstraintSolver.solve(sketch, movedPoints);
-    }
-    for (const p of movedPoints) {
-      this._constraintSolver.solveConstraintsForPoint(sketch, p, null, {});
-    }
-    return 0;
+    if (!this._slvsAdapter?.ready) return null;
+    return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
   }
 
   _setPreviewLine(line) {
