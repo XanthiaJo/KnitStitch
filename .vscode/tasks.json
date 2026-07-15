@@ -1,0 +1,58 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "vite: dev (if not running)",
+            "type": "shell",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File ${workspaceFolder}\\.vscode\\start-vite.ps1",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "vite",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "VITE",
+                    "endsPattern": "ready in"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "vite: build",
+            "type": "shell",
+            "command": "npm run build",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "test: unit",
+            "type": "shell",
+            "command": "npm run test",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "test: e2e (dev server)",
+            "type": "shell",
+            "command": "npm run test:e2e:dev",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}

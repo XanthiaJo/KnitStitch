@@ -1,0 +1,29 @@
+{
+  "folders": [
+    {
+      "name": "KnitStitch",
+      "path": "."
+    },
+    {
+      "name": "solver-wasm",
+      "path": "../solver-wasm"
+    }
+  ],
+  "settings": {
+    "search.exclude": {
+      "dist": true,
+      "node_modules": true,
+      "coverage": true,
+      "test-results": true,
+      "test-results-constraints": true,
+      "playwright-report": true,
+      "test-screenshots": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "ms-playwright.playwright"
+    ]
+  }
+}
