@@ -11,21 +11,31 @@
 </head>
 <body class="page-knitstitch">
 
+  <div class="global-bar">
+    <div class="shell global-bar-row">
+      <a class="global-bar-link" href="https://www.misssponto.me.uk/">Miss Sponto</a>
+      <a class="global-bar-link active" href="/">KnitStitch</a>
+    </div>
+  </div>
+
   <header class="site-header">
     <div class="shell">
       <div class="header-row">
         <h1 class="brand">KnitStitch</h1>
+        <nav class="main-nav">
+          <div class="main-nav-item">
+            <a class="main-nav-link" href="/">Home</a>
+          </div>
+          <div class="main-nav-item">
+            <a class="main-nav-link" href="/README.md">ReadMe.md</a>
+          </div>
+          <div class="main-nav-item">
+            <a class="main-nav-link" href="/CHANGELOG.md">ChangeLog.md</a>
+          </div>
+        </nav>
       </div>
     </div>
   </header>
-
-  <div class="page-subheader">
-    <div class="shell">
-      <div class="page-subheader-inner">
-        <h1>KnitStitch Grid</h1>
-      </div>
-    </div>
-  </div>
 
   <div class="shell">
     <div id="app-container">
@@ -304,5 +314,20 @@
     }
   </script>
   <script type="module" src="/src/main.js"></script>
+
+  <footer class="site-footer">
+    <div class="shell footer-row">
+      <div class="footer-version" id="footer-version"></div>
+    </div>
+  </footer>
+  <script src="/js/buildInfo.js"></script>
+  <script>
+    (function() {
+      var el = document.getElementById('footer-version');
+      if (el && window.BUILD_INFO) {
+        el.textContent = 'v' + window.BUILD_INFO.version.replace(/^v/, '') + ' (' + window.BUILD_INFO.commit + ')';
+      }
+    })();
+  </script>
 </body>
 </html>

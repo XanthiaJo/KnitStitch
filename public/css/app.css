@@ -54,7 +54,7 @@ html {
 }
 
 [id] {
-    scroll-margin-top: 80px;
+    scroll-margin-top: 116px;
 }
 
 body {
@@ -247,14 +247,54 @@ td {
 }
 
 /* ==========================================================================
-   5. Site Header
+   4b. Global Bar (shared between sites)
+   ========================================================================== */
+.global-bar {
+    background: var(--body-dark);
+    position: sticky;
+    top: 0;
+    z-index: 110;
+}
+
+.global-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-height: 36px;
+}
+
+.global-bar-link {
+    color: var(--secondary);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    opacity: 0.7;
+    transition: opacity 140ms ease, color 140ms ease;
+}
+
+.global-bar-link:hover {
+    opacity: 1;
+    color: var(--primary-light);
+}
+
+.global-bar-link.active {
+    opacity: 1;
+    color: var(--primary);
+}
+
+/* ==========================================================================
+   5. Site Header & Navigation
    ========================================================================== */
 .site-header {
     background: var(--tertiary);
     border-bottom: 1px solid var(--border);
     position: sticky;
-    top: 0;
+    top: 36px;
     z-index: 100;
+    margin-bottom: 20px;
 }
 
 .header-row {
@@ -279,28 +319,132 @@ td {
     white-space: nowrap;
 }
 
-/* ==========================================================================
-   6. Page Sub-header
-   ========================================================================== */
-.page-subheader {
-    padding: 24px 0 14px;
-    margin-bottom: 14px;
-}
-
-.page-subheader-inner {
-    text-align: center;
-    padding: 22px 28px;
-    background: var(--secondary-light);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+.main-nav {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 0;
+    gap: 26px;
+    justify-self: center;
 }
 
-.page-subheader-inner h1 {
-    margin: 0;
+.main-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
 }
+
+.main-nav-link {
+    color: var(--body-dark);
+    font-size: var(--type-h5);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 72px;
+}
+
+.main-nav-link.active {
+    color: var(--primary);
+}
+
+.main-nav-item.has-submenu .main-nav-link::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    margin-left: 8px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg) translateY(-1px);
+}
+
+.main-nav-submenu {
+    position: absolute;
+    top: calc(100% - 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    padding: 10px 0;
+    background: var(--tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+    z-index: 120;
+}
+
+.main-nav-item:hover .main-nav-submenu,
+.main-nav-item:focus-within .main-nav-submenu {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(4px);
+}
+
+.main-nav-submenu-link {
+    display: block;
+    padding: 10px 16px;
+    color: var(--body-dark);
+    font-size: var(--type-h5);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+.main-nav-submenu-link:hover {
+    background: var(--secondary-light);
+    opacity: 1;
+}
+
+.header-project-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-self: end;
+}
+
+.project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--tertiary);
+    color: var(--body-dark);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.project-link:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.project-link svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    fill: currentColor;
+    flex: 0 0 auto;
+}
+
+/* ==========================================================================
+   6. Page Sub-header (removed — header nav replaces title panel)
+   ========================================================================== */
 
 /* ==========================================================================
    7. Buttons
@@ -469,8 +613,12 @@ select:focus {
     overflow: hidden;
 }
 
-.page-knitstitch .site-header,
-.page-knitstitch .page-subheader {
+.page-knitstitch .global-bar,
+.page-knitstitch .site-header {
+    flex-shrink: 0;
+}
+
+.page-knitstitch .site-footer {
     flex-shrink: 0;
 }
 
@@ -783,4 +931,28 @@ select:focus {
     height: 16px;
     border: 1px solid var(--border);
     border-radius: 2px;
+}
+
+/* ==========================================================================
+   Site Footer
+   ========================================================================== */
+.site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--tertiary-dark);
+    padding: 22px 0;
+    margin-top: auto;
+}
+
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+}
+
+.footer-version {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--body-light);
 }
