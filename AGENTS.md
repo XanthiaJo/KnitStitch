@@ -156,6 +156,85 @@ Each colour family has its own selection highlight instead of a single site-wide
 - `OverlayLayer` handles reference image display
 - stage layer order is grid -> overlay -> sketch
 
+## SolveSpace WASM Solver Loading
+
+`public/wasm/slvs.js` (~6 MB) is the SolveSpace constraint solver compiled to
+WebAssembly. Loading/instantiating it causes a long, mostly-unavoidable
+main-thread block (users reported the page "looking crashed" for 2-3 minutes).
+This has been investigated across a couple of sessions — **read this before
+re-investigating the freeze or the loading UX**, so we don't go in circles.
+
+### Root cause
+
+`public/wasm/slvs.js` is built from the sibling `solver-wasm` repo
+(`src/slvs/CMakeLists.txt`) with `-s SINGLE_FILE=1`, which base64-embeds the
+`.wasm` payload directly inside the JS instead of emitting a separate
+`.wasm` file. This forces:
+
+- a synchronous base64 → bytes decode, and
+- non-streaming `WebAssembly.instantiate()` instead of
+  `WebAssembly.instantiateStreaming()` (streaming requires a real network
+  `Response`, which isn't available for an inlined blob)
+
+Both are long, synchronous, main-thread-blocking operations for a module
+this size. **This is the real fix**, but requires an Emscripten toolchain
+(`emcc`/`em++`) to rebuild — not available in the KnitStitch sandbox as of
+this writing. The fix would be: remove `SINGLE_FILE=1` from
+`solver-wasm/src/slvs/CMakeLists.txt`, rebuild, and update
+`public/wasm/slvs.js` (+ any accompanying `.wasm` file) here. Do this if/when
+an Emscripten build environment is available — it's the only way to actually
+shorten the block, not just relocate it.
+
+### What's implemented instead (mitigations, not a fix)
+
+Since the block itself can't be eliminated without the rebuild above, the
+following reduces its *impact* without reducing its *duration*:
+
+- **Lazy load, not eager.** `SketchService.ensureSolver()` loads the WASM on
+  demand instead of the old behavior of loading it synchronously in the
+  constructor. It's idempotent (safe to call repeatedly) and memoizes the
+  in-flight/completed promise.
+- **`main.js` triggers the load once, right after boot**, so first paint and
+  initial page interactivity aren't blocked. It also has fallback triggers:
+  tool selection (Constraint/Dimension, in `state/properties.js`) and any
+  solve attempt (`_solve`, `_reconvergeConstraints` in `sketchService.js`).
+- **Boot loading overlay** (`index.html` `#boot-loading-overlay`,
+  `app.css` `.boot-loading-overlay`, hidden by `main.js` once
+  `ensureSolver()` resolves) — shown from first paint so the page reads as
+  "loading" instead of "crashed" during the block. The spinner uses a
+  transform-only CSS animation (compositor-driven in most browsers), so it
+  keeps visibly spinning even while the main thread is blocked.
+- `_reconvergeConstraints` only re-renders (flush/rebuild) if the deferred
+  solve actually changed point positions, to avoid a disruptive re-render
+  racing with the user's next click if the solver finishes loading mid-
+  interaction.
+
+### Things tried and rejected — don't retry these
+
+- **`requestIdleCallback` to defer the load start**: unreliable — it can be
+  starved indefinitely while the page keeps receiving input (exactly the
+  condition under fast automated E2E clicking, and plausible during real
+  rapid sketching too). Use a plain `setTimeout`/direct call instead if you
+  need deterministic timing.
+- **Setting `gridLayer`/`overlayLayer`'s Konva `Layer` to `listening:false`**
+  (to reduce canvas-fingerprinting permission prompts in browsers like
+  LibreWolf, which prompt per-canvas on `getImageData` hit-test reads): this
+  surfaced a **pre-existing, separate bug** where clicking very close to the
+  origin anchor point sometimes selects the anchor instead of the nearby
+  line, and there's an object-identity mismatch between
+  `service._selectedPoints`/`_selectedLines` and the arrays produced by
+  `rebuildSketchObjects`/`flushSketchArrays` on each render (selection state
+  doesn't reliably survive a rebuild). This change was reverted rather than
+  shipped alongside the unrelated bug. If revisiting canvas-permission-prompt
+  reduction, fix the selection/rebuild identity issue first, in isolation,
+  with its own test coverage.
+- **E2E test flakiness from the lazy load**: fast automated clicks race
+  ahead of the async WASM load in ways a real user (much slower between
+  actions) wouldn't. Fixed by adding a `page.waitForFunction(() =>
+  window.__knitstitchSketchService?._slvsAdapter?.ready)` wait in
+  `e2e/helpers/sketchHelpers.js`'s `openSketch()`, rather than by changing
+  app behavior to suit tests.
+
 ## Testing Rules
 
 Tests live at the repository root under `unit/` and `e2e/`.
