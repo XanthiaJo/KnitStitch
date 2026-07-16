@@ -11,6 +11,16 @@
 </head>
 <body class="page-knitstitch">
 
+  <!-- Boot loading overlay: shown immediately (before any JS runs) and
+       hidden by main.js once the SolveSpace WASM solver finishes loading.
+       Instantiating the solver blocks the main thread for a while (see
+       AGENTS.md "SolveSpace WASM Solver Loading"), so this exists purely
+       to communicate "loading" instead of the page appearing frozen/crashed. -->
+  <div id="boot-loading-overlay" class="boot-loading-overlay" role="status" aria-live="polite">
+    <div class="boot-loading-spinner" aria-hidden="true"></div>
+    <p class="boot-loading-text">Loading sketch tools&hellip;</p>
+  </div>
+
   <div class="global-bar">
     <div class="shell global-bar-row">
       <a class="global-bar-link" href="https://www.misssponto.me.uk/">Miss Sponto</a>
