@@ -68,6 +68,19 @@ export async function openSketch(page) {
     };
   });
 
+  // The SolveSpace WASM solver now loads lazily (off the critical path)
+  // instead of blocking page boot, so real users get an interactive page
+  // immediately. It normally finishes loading well before a human reaches
+  // a constraint/dimension/drag interaction, but automated tests click
+  // through the same steps in milliseconds, so wait for it here once per
+  // test to keep constraint-dependent assertions deterministic.
+  await page.evaluate(() => window.__knitstitchSketchService?.ensureSolver());
+  await page.waitForFunction(
+    () => window.__knitstitchSketchService?._slvsAdapter?.ready === true,
+    null,
+    { timeout: 30000 },
+  );
+
   return box;
 }
 
