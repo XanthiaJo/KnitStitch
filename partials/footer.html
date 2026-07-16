@@ -1,0 +1,14 @@
+<footer class="site-footer">
+  <div class="shell footer-row">
+    <div class="footer-version" id="footer-version"></div>
+  </div>
+</footer>
+<script src="/js/buildInfo.js"></script>
+<script>
+  (function() {
+    var el = document.getElementById('footer-version');
+    if (el && window.BUILD_INFO) {
+      el.textContent = 'v' + window.BUILD_INFO.version.replace(/^v/, '') + ' (' + window.BUILD_INFO.commit + ')';
+    }
+  })();
+</script>
