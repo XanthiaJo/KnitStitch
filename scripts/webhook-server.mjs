@@ -157,17 +157,33 @@ const server = createServer((req, res) => {
     // GitHub may send the payload gzip-compressed (Content-Encoding: gzip).
     // The signature is computed on the compressed bytes, so we decompress
     // only after signature verification.
-    let jsonBody;
+    let bodyBytes = rawBody;
     if (req.headers['content-encoding'] === 'gzip') {
       try {
-        jsonBody = gunzipSync(rawBody).toString('utf8');
+        bodyBytes = gunzipSync(rawBody);
       } catch {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to decompress gzip payload' }));
         return;
       }
+    }
+
+    // GitHub can send payloads as application/json (raw JSON body) or as
+    // application/x-www-form-urlencoded (JSON wrapped in a payload= form field).
+    // Extract the JSON string from either format.
+    let jsonBody;
+    const contentType = req.headers['content-type'] || '';
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const bodyStr = bodyBytes.toString('utf8');
+      const match = bodyStr.match(/(?:^|&)payload=([^&]*)/);
+      if (!match) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing payload field in form-encoded body' }));
+        return;
+      }
+      jsonBody = decodeURIComponent(match[1]);
     } else {
-      jsonBody = rawBody.toString('utf8');
+      jsonBody = bodyBytes.toString('utf8');
     }
 
     // Parse payload
