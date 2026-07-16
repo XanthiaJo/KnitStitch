@@ -1,33 +1,60 @@
+<div class="changelog-types" data-version="v2">
+  <div class="container-section--headed">
+    <div class="container-section-header">Change Types</div>
+    <div class="container-section-body">
+      <nav class="container-actions" aria-label="Changelog sections">
+        <a class="chip color-pair-red" href="#breaking-changes">Breaking Changes</a>
+        <a class="chip color-pair-gold" href="#feature-changes">Features</a>
+        <a class="chip color-pair-sage" href="#fix-changes">Fixes</a>
+        <a class="chip color-pair-sky" href="#docs-changes">Documentation</a>
+        <a class="chip color-pair-stone" href="#refactor-changes">Refactors</a>
+        <a class="chip color-pair-plum" href="#test-changes">Tests</a>
+        <a class="chip color-pair-olive" href="#chore-changes">Maintenance</a>
+        <a class="chip color-pair-ink" href="#other-changes">Other Changes</a>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="changelog-versions" data-version="v2">
+  <div class="container-section--headed">
+    <div class="container-section-header">Versions</div>
+    <div class="container-section-body">
+      <ul class="list">
+        <li><a href="#v2.4.0.2"><span class="caption">v2.4.0.2</span></a></li>
+        <li><a href="#v2.4.0.1"><span class="caption">v2.4.0.1</span></a></li>
+        <li><a href="#v2.4.0"><span class="caption">v2.4.0</span></a></li>
+        <li><a href="#v2.3.1"><span class="caption">v2.3.1</span></a></li>
+        <li><a href="#v2.3.0.1"><span class="caption">v2.3.0.1</span></a></li>
+        <li><a href="#v2.3.0"><span class="caption">v2.3.0</span></a></li>
+        <li><a href="#v2.2.0"><span class="caption">v2.2.0</span></a></li>
+        <li><a href="#v2.1.0.3"><span class="caption">v2.1.0.3</span></a></li>
+        <li><a href="#v2.1.0.2"><span class="caption">v2.1.0.2</span></a></li>
+        <li><a href="#v2.1.0.1"><span class="caption">v2.1.0.1</span></a></li>
+        <li><a href="#v2.1.0"><span class="caption">v2.1.0</span></a></li>
+        <li><a href="#v2.0.0.1"><span class="caption">v2.0.0.1</span></a></li>
+        <li><a href="#v2.0.0"><span class="caption">v2.0.0</span></a></li>
+      </ul>
+    </div>
+  </div>
+</div>
 <div class="container-sections">
   <section class="panel panel--padded">
-    <h2>Build Snapshot</h2>
+    <h3>Build Snapshot</h3>
     <div class="container-actions">
-      <span class="chip color-pair-ink">Version v2.1.0.3</span>
-      <span class="chip color-pair-stone">6 commits</span>
+      <span class="chip color-pair-ink">Version v2.4.0.2</span>
+      <span class="chip color-pair-stone">13 commits</span>
     </div>
-    <p class="body">Generated from conventional commits and git tags during the build.</p>
-  </section>
-  <section class="panel panel--padded">
-    <h2>Change Types</h2>
-    <nav class="container-actions" aria-label="Change log sections">
-      <a class="chip color-pair-red" href="#breaking-changes">Breaking Changes</a>
-      <a class="chip color-pair-gold" href="#feature-changes">Features</a>
-      <a class="chip color-pair-sky" href="#docs-changes">Documentation</a>
-      <a class="chip color-pair-stone" href="#refactor-changes">Refactors</a>
-      <a class="chip color-pair-olive" href="#chore-changes">Maintenance</a>
-      <a class="chip color-pair-ink" href="#other-changes">Other Changes</a>
-    </nav>
   </section>
   <section class="panel panel--padded" id="breaking-changes">
-    <h3>Breaking Changes</h3>
+    <h4>Breaking Changes</h4>
     <ul class="list">
-      <li>
+      <li id="v2.0.0">
         <div class="container-content">
           <div class="container-actions">
           <span class="chip color-pair-red">Breaking Changes</span>
             <span class="caption">v2.0.0 - 4536f67 - 2026-07-14</span>
           </div>
-          <h4>Initialize standalone KnitStitch Grid app</h4>
+          <h5>Initialize standalone KnitStitch Grid app</h5>
           <ul>
             <li>extract app from CraftCMS into standalone Vite project</li>
             <li>serve from own subdomain (www.knitstitch.misssponto.me.uk)</li>
@@ -42,15 +69,63 @@
     </ul>
   </section>
   <section class="panel panel--padded" id="feature-changes">
-    <h3>Features</h3>
+    <h4>Features</h4>
     <ul class="list">
-      <li>
+      <li id="v2.4.0">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-gold">Features</span>
+            <span class="caption">v2.4.0 - 981b789 - 2026-07-16</span>
+          </div>
+          <h5>Add boot loading overlay for solver initialization</h5>
+          <ul>
+            <li>Shown from first paint until the SolveSpace WASM solver finishes loading so the page reads as &quot;loading&quot; instead of &quot;crashed&quot; during the main-thread block. The spinner uses a transform-only CSS animation so it keeps visibly spinning even while the main thread is busy.</li>
+          </ul>
+        </div>
+      </li>
+      <li id="v2.3.0">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-gold">Features</span>
+            <span class="caption">v2.3.0 - 0b250cb - 2026-07-16</span>
+          </div>
+          <h5>Add GitHub webhook for VPS auto-deploy</h5>
+          <ul>
+            <li>Add webhook.php adapted from CraftCMS webhook (same HMAC-SHA256 signature verification) but with npm ci + npm run build instead of composer install</li>
+            <li>Add .env.example with GITHUB_WEBHOOK_SECRET template</li>
+            <li>Add .env to .gitignore, fix corrupted .gitignore encoding</li>
+            <li>Update AGENTS.md with VPS deploy section, SSH setup steps, and architecture entries for webhook.php, .env.example, pages/</li>
+            <li>Update README.md with deployment note</li>
+          </ul>
+        </div>
+      </li>
+      <li id="v2.2.0">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-gold">Features</span>
+            <span class="caption">v2.2.0 - b60ef4d - 2026-07-16</span>
+          </div>
+          <h5>Add changelog page with v1/v2 tabs</h5>
+          <ul>
+            <li>Add pages/changelog.html with separated layout (global header, page header, content area, footer) and v1/v2 tab switching</li>
+            <li>Add --format=html to generate-build-info.mjs for HTML changelog fragments</li>
+            <li>Fix artificial line breaks in captions (trim git log fields) and word-wrapped paragraph lines becoming separate bullets</li>
+            <li>Generate public/changelog-v2.html from KnitStitch git history</li>
+            <li>Copy CraftCMS changelog history to public/changelog-v1.html with caption line breaks fixed</li>
+            <li>Add CSS for chips, color-pairs, panels, lists, and tab bar</li>
+            <li>Add pages/changelog.html as second Vite build entry</li>
+            <li>Update nav link from /CHANGELOG.md to /pages/changelog.html</li>
+            <li>Update build-info scripts to also generate HTML changelog</li>
+          </ul>
+        </div>
+      </li>
+      <li id="v2.1.0">
         <div class="container-content">
           <div class="container-actions">
           <span class="chip color-pair-gold">Features</span>
             <span class="caption">v2.1.0 - 605165f - 2026-07-15</span>
           </div>
-          <h4>Integrate SolveSpace WASM constraint solver</h4>
+          <h5>Integrate SolveSpace WASM constraint solver</h5>
           <ul>
             <li>Replace the hand-rolled gradient-descent solver with SolveSpace's Newton's-method solver, compiled to WebAssembly. Shipped behind a solverBackend feature flag ('native' | 'slvs') so the existing solver stays available as a fallback.</li>
             <li>The SolveSpace solver is built from a fork of solvespace/solvespace (XanthiaJo/SolverWasm) which already includes embind JS bindings and a CMake slvs-wasm target. The built slvs.js (6 MB, single-file with embedded WASM) is committed as a static asset in public/wasm/.</li>
@@ -65,16 +140,47 @@
       </li>
     </ul>
   </section>
-  <section class="panel panel--padded" id="docs-changes">
-    <h3>Documentation</h3>
+  <section class="panel panel--padded" id="fix-changes">
+    <h4>Fixes</h4>
     <ul class="list">
-      <li>
+      <li id="v2.3.1">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-sage">Fixes</span>
+            <span class="caption">v2.3.1 - 2a9f150 - 2026-07-16</span>
+          </div>
+          <h5>Defer solver load and drop canvas hit-test reads</h5>
+          <ul>
+            <li>The page was sluggish and triggered recurring HTML5 canvas permission prompts. Two root causes: the ~6 MB SolveSpace WASM bundle was instantiated eagerly at boot (a long main-thread block), and Konva's pixel-based hit detection called getImageData() on every pointer event (prompting per-canvas privacy permissions in browsers like LibreWolf).</li>
+            <li>load the solver lazily via ensureSolver() (idempotent, memoized) instead of in the SketchService constructor; main.js no longer blocks boot on it, and tool selection / solve attempts trigger it as a fallback</li>
+            <li>set grid and sketch layers to listening:false and route pointer events through the app's own geometry hit testing (nearestPoint/nearestLine) instead of Konva's hit canvas, eliminating the getImageData() reads that caused the repeated prompts</li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="docs-changes">
+    <h4>Documentation</h4>
+    <ul class="list">
+      <li id="v2.4.0.2">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-sky">Documentation</span>
+            <span class="caption">v2.4.0.2 - a1231e6 - 2026-07-16</span>
+          </div>
+          <h5>Document WASM solver loading and mitigations</h5>
+          <ul>
+            <li>Record the root cause (SINGLE_FILE=1 base64 embed forcing synchronous decode + non-streaming instantiate), the lazy-load mitigations shipped here, and the approaches tried and rejected (requestIdleCallback, listening:false on grid/overlay layers, E2E flakiness) so future sessions don't re-investigate the freeze in circles.</li>
+          </ul>
+        </div>
+      </li>
+      <li id="v2.1.0.3">
         <div class="container-content">
           <div class="container-actions">
           <span class="chip color-pair-sky">Documentation</span>
             <span class="caption">v2.1.0.3 - 9eedd1b - 2026-07-16</span>
           </div>
-          <h4>Rewrite git-rules for KnitStitch project</h4>
+          <h5>Rewrite git-rules for KnitStitch project</h5>
           <ul>
             <li>replace Craft CMS references with Node.js tooling</li>
             <li>update scopes to match project areas (sketch, solver, grid, etc.)</li>
@@ -85,15 +191,32 @@
     </ul>
   </section>
   <section class="panel panel--padded" id="refactor-changes">
-    <h3>Refactors</h3>
+    <h4>Refactors</h4>
     <ul class="list">
-      <li>
+      <li id="v2.3.0.1">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-stone">Refactors</span>
+            <span class="caption">v2.3.0.1 - bb07945 - 2026-07-16</span>
+          </div>
+          <h5>Replace PHP webhook with Node.js webhook server</h5>
+          <ul>
+            <li>Replace webhook.php with scripts/webhook-server.mjs (no external dependencies, uses only Node.js built-ins)</li>
+            <li>Add ecosystem.config.cjs for PM2 process management</li>
+            <li>Update .env.example to reference webhook-server.mjs</li>
+            <li>Update AGENTS.md with Node.js webhook setup instructions (PM2, nginx proxy, ecosystem config)</li>
+            <li>Update README.md deploy note</li>
+            <li>nginx on the KnitStitch subdomain is a static/Node site with no PHP processing, so the PHP webhook returned 405. The Node.js server runs on 127.0.0.1:3001 with nginx proxying /webhook to it.</li>
+          </ul>
+        </div>
+      </li>
+      <li id="v2.1.0.2">
         <div class="container-content">
           <div class="container-actions">
           <span class="chip color-pair-stone">Refactors</span>
             <span class="caption">v2.1.0.2 - 11f5463 - 2026-07-16</span>
           </div>
-          <h4>Remove dead native solver code</h4>
+          <h5>Remove dead native solver code</h5>
           <ul>
             <li>delete 7 native solver modules and 4 unit tests (2275 lines)</li>
             <li>remove solverBackend flag, native fallback branches, enforce* calls</li>
@@ -105,31 +228,50 @@
       </li>
     </ul>
   </section>
-  <section class="panel panel--padded" id="chore-changes">
-    <h3>Maintenance</h3>
+  <section class="panel panel--padded" id="test-changes">
+    <h4>Tests</h4>
     <ul class="list">
-      <li>
+      <li id="v2.4.0.1">
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-plum">Tests</span>
+            <span class="caption">v2.4.0.1 - c1aabd7 - 2026-07-16</span>
+          </div>
+          <h5>Wait for lazy solver load in sketch helpers</h5>
+          <ul>
+            <li>The solver no longer loads eagerly at boot, so automated tests that click through constraint/dimension steps in milliseconds race ahead of the async WASM load. Explicitly trigger ensureSolver() and wait for ready in openSketch() to keep constraint-dependent assertions deterministic.</li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="chore-changes">
+    <h4>Maintenance</h4>
+    <ul class="list">
+      <li id="v2.0.0.1">
         <div class="container-content">
           <div class="container-actions">
           <span class="chip color-pair-olive">Maintenance</span>
             <span class="caption">v2.0.0.1 - a3edaf8 - 2026-07-15</span>
           </div>
-          <h4>Add VS Code workspace config and build tooling</h4>
-          <p>Add VS Code launch/tasks config, the build-info generator script, generated buildInfo.js, CHANGELOG.md, and the historical CraftCMS changelog reference.</p>
+          <h5>Add VS Code workspace config and build tooling</h5>
+          <ul>
+            <li>Add VS Code launch/tasks config, the build-info generator script, generated buildInfo.js, CHANGELOG.md, and the historical CraftCMS changelog reference.</li>
+          </ul>
         </div>
       </li>
     </ul>
   </section>
   <section class="panel panel--padded" id="other-changes">
-    <h3>Other Changes</h3>
+    <h4>Other Changes</h4>
     <ul class="list">
-      <li>
+      <li id="v2.1.0.1">
         <div class="container-content">
           <div class="container-actions">
           <span class="chip color-pair-ink">Other Changes</span>
             <span class="caption">v2.1.0.1 - 4f449b7 - 2026-07-15</span>
           </div>
-          <h4>Update app styles and index.html</h4>
+          <h5>Update app styles and index.html</h5>
         </div>
       </li>
     </ul>

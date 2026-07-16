@@ -415,29 +415,67 @@ if (format === 'js') {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
 
+  // Collect unique versions in descending order (newest first)
+  const allVersions = new Set();
+  for (const items of Object.values(changeGroups)) {
+    for (const item of items) {
+      allVersions.add(item.version);
+    }
+  }
+  const sortedVersions = [...allVersions].sort((a, b) => {
+    const pa = a.replace(/^v/, '').split('.').map(Number);
+    const pb = b.replace(/^v/, '').split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const va = pa[i] || 0;
+      const vb = pb[i] || 0;
+      if (va !== vb) return vb - va;
+    }
+    return 0;
+  });
+
   const html = [];
+
+  // --- Sidebar blocks (moved into the sidebar via JS on the page) ---
+  // Change Types as a headed panel
+  html.push('<div class="changelog-types" data-version="v2">');
+  html.push('  <div class="container-section--headed">');
+  html.push('    <div class="container-section-header">Change Types</div>');
+  html.push('    <div class="container-section-body">');
+  html.push('      <nav class="container-actions" aria-label="Changelog sections">');
+  for (const [groupKey, groupLabel] of Object.entries(groupLabels)) {
+    const items = changeGroups[groupKey];
+    if (!items || items.length === 0) continue;
+    html.push(`        <a class="chip ${groupChipClass[groupKey]}" href="#${groupKey}-changes">${groupLabel}</a>`);
+  }
+  html.push('      </nav>');
+  html.push('    </div>');
+  html.push('  </div>');
+  html.push('</div>');
+
+  // Versions list as a headed panel
+  html.push('<div class="changelog-versions" data-version="v2">');
+  html.push('  <div class="container-section--headed">');
+  html.push('    <div class="container-section-header">Versions</div>');
+  html.push('    <div class="container-section-body">');
+  html.push('      <ul class="list">');
+  for (const version of sortedVersions) {
+    html.push(`        <li><a href="#${esc(version)}"><span class="caption">${esc(version)}</span></a></li>`);
+  }
+  html.push('      </ul>');
+  html.push('    </div>');
+  html.push('  </div>');
+  html.push('</div>');
+
+  // --- Main content: Build Snapshot + change sections ---
   html.push('<div class="container-sections">');
 
   // Build snapshot panel
   html.push('  <section class="panel panel--padded">');
-  html.push('    <h2>Build Snapshot</h2>');
+  html.push('    <h3>Build Snapshot</h3>');
   html.push('    <div class="container-actions">');
   html.push(`      <span class="chip ${groupChipClass.other}">Version ${esc(displayVersion)}</span>`);
   html.push(`      <span class="chip color-pair-stone">${commitCount} commits</span>`);
   html.push('    </div>');
-  html.push('    <p class="body">Generated from conventional commits and git tags during the build.</p>');
-  html.push('  </section>');
-
-  // Change type nav
-  html.push('  <section class="panel panel--padded">');
-  html.push('    <h2>Change Types</h2>');
-  html.push('    <nav class="container-actions" aria-label="Change log sections">');
-  for (const [groupKey, groupLabel] of Object.entries(groupLabels)) {
-    const items = changeGroups[groupKey];
-    if (!items || items.length === 0) continue;
-    html.push(`      <a class="chip ${groupChipClass[groupKey]}" href="#${groupKey}-changes">${groupLabel}</a>`);
-  }
-  html.push('    </nav>');
   html.push('  </section>');
 
   // Each group
@@ -446,27 +484,33 @@ if (format === 'js') {
     if (!items || items.length === 0) continue;
 
     html.push(`  <section class="panel panel--padded" id="${groupKey}-changes">`);
-    html.push(`    <h3>${esc(groupLabel)}</h3>`);
+    html.push(`    <h4>${esc(groupLabel)}</h4>`);
     html.push('    <ul class="list">');
 
+    // Track which versions have already been anchored so only the first
+    // entry for each version gets an id that the sidebar can link to.
+    const anchoredVersions = new Set();
+
     for (const item of [...items].reverse()) {
-      html.push('      <li>');
+      const liId = !anchoredVersions.has(item.version) ? ` id="${esc(item.version)}"` : '';
+      if (liId) anchoredVersions.add(item.version);
+      html.push(`      <li${liId}>`);
       html.push('        <div class="container-content">');
       html.push('          <div class="container-actions">');
       html.push(`          <span class="chip ${groupChipClass[groupKey]}">${esc(groupLabel)}</span>`);
       html.push(`            <span class="caption">${esc(item.version)} - ${esc(item.sha)} - ${esc(item.date)}</span>`);
       html.push('          </div>');
-      html.push(`          <h4>${esc(item.subject)}</h4>`);
+      html.push(`          <h5>${esc(item.subject)}</h5>`);
       if (item.description) {
+        html.push('          <ul>');
         if (Array.isArray(item.description)) {
-          html.push('          <ul>');
           for (const bullet of item.description) {
             html.push(`            <li>${esc(bullet)}</li>`);
           }
-          html.push('          </ul>');
         } else {
-          html.push(`          <p>${esc(item.description)}</p>`);
+          html.push(`            <li>${esc(item.description)}</li>`);
         }
+        html.push('          </ul>');
       }
       html.push('        </div>');
       html.push('      </li>');

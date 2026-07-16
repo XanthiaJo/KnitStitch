@@ -9,94 +9,96 @@
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
 </head>
-<body class="page-document">
+<body class="page-document page-changelog">
 
   <!-- ===== Global Header ===== -->
-  <div class="global-header">
-    <div class="global-bar">
-      <div class="shell global-bar-row">
-        <a class="global-bar-link" href="https://www.misssponto.me.uk/">Miss Sponto</a>
-        <a class="global-bar-link active" href="/">KnitStitch</a>
+  <!-- #include file="partials/header.html" -->
+
+  <!-- ===== Page Sub-header ===== -->
+  <section class="page-subheader">
+    <div class="shell">
+      <div class="page-subheader-inner">
+        <h1>Changelog</h1>
       </div>
     </div>
+  </section>
 
-    <header class="site-header">
-      <div class="shell">
-        <div class="header-row">
-          <h1 class="brand">KnitStitch</h1>
-          <nav class="main-nav">
-            <div class="main-nav-item">
-              <a class="main-nav-link" href="/">Home</a>
-            </div>
-            <div class="main-nav-item">
-              <a class="main-nav-link" href="/README.md">ReadMe.md</a>
-            </div>
-            <div class="main-nav-item">
-              <a class="main-nav-link active" href="/pages/changelog.html">ChangeLog</a>
-            </div>
-          </nav>
+  <!-- ===== Main ===== -->
+  <main class="page-main">
+    <div class="shell page-layout">
+
+      <!-- Left: Container with tabs + changelog content -->
+      <div class="container">
+        <!-- Tab bar -->
+        <div class="tab-bar" role="tablist">
+          <button class="tab-btn active" role="tab" data-tab="v2" aria-selected="true">v2</button>
+          <button class="tab-btn" role="tab" data-tab="v1" aria-selected="false">v1</button>
+        </div>
+
+        <!-- v2 tab — generated from KnitStitch git history -->
+        <div class="tab-panel active" id="tab-v2" role="tabpanel">
+          <div class="changelog-loading" id="v2-loading">Loading v2 changelog…</div>
+          <div id="v2-content"></div>
+        </div>
+
+        <!-- v1 tab — historical CraftCMS era changelog -->
+        <div class="tab-panel" id="tab-v1" role="tabpanel">
+          <div class="changelog-loading" id="v1-loading">Loading v1 changelog…</div>
+          <div id="v1-content"></div>
         </div>
       </div>
-    </header>
-  </div>
 
-  <!-- ===== Page Header ===== -->
-  <div class="page-header">
-    <div class="shell">
-      <h1>Changelog</h1>
-      <p class="page-subtitle">Version history for KnitStitch Grid</p>
-    </div>
-  </div>
-
-  <!-- ===== Content Area ===== -->
-  <div class="content-area">
-    <div class="shell">
-
-      <!-- Tab bar -->
-      <div class="tab-bar" role="tablist">
-        <button class="tab-btn active" role="tab" data-tab="v2" aria-selected="true">v2 — KnitStitch</button>
-        <button class="tab-btn" role="tab" data-tab="v1" aria-selected="false">v1 — CraftCMS</button>
-      </div>
-
-      <!-- v2 tab — generated from KnitStitch git history -->
-      <div class="tab-panel active" id="tab-v2" role="tabpanel">
-        <div class="changelog-loading" id="v2-loading">Loading v2 changelog…</div>
-        <div id="v2-content"></div>
-      </div>
-
-      <!-- v1 tab — historical CraftCMS era changelog -->
-      <div class="tab-panel" id="tab-v1" role="tabpanel">
-        <div class="changelog-loading" id="v1-loading">Loading v1 changelog…</div>
-        <div id="v1-content"></div>
-      </div>
+      <!-- Right: Sticky sidebar with headed panels -->
+      <aside class="sidebar sidebar--sticky">
+        <div class="container-sections">
+          <section class="container-section--headed">
+            <div class="container-section-header">About this log</div>
+            <div class="container-section-body">
+              <div class="body">This page is generated from conventional commits and git tags during the build step. The latest build snapshot, production version, commit count, and recent commits grouped into simple readable sections.</div>
+            </div>
+          </section>
+          <div class="changelog-types-sidebar" id="changelog-types-sidebar"></div>
+        </div>
+      </aside>
 
     </div>
-  </div>
+  </main>
 
   <!-- ===== Footer ===== -->
-  <footer class="site-footer">
-    <div class="shell footer-row">
-      <div class="footer-version" id="footer-version"></div>
-    </div>
-  </footer>
+  <!-- #include file="partials/footer.html" -->
 
-  <script src="/js/buildInfo.js"></script>
-  <script>
-    (function() {
-      var el = document.getElementById('footer-version');
-      if (el && window.BUILD_INFO) {
-        el.textContent = 'v' + window.BUILD_INFO.version.replace(/^v/, '') + ' (' + window.BUILD_INFO.commit + ')';
-      }
-    })();
-  </script>
-
-  <!-- Tab switching + content loading -->
+  <!-- Tab switching + content loading + sidebar block relocation -->
   <script>
     (function() {
       var tabBtns = document.querySelectorAll('.tab-btn');
       var tabPanels = document.querySelectorAll('.tab-panel');
       var v2Loaded = false;
       var v1Loaded = false;
+
+      // Sidebar blocks (Change Types + Versions) are inside the loaded
+      // fragment. Move them into the sidebar placeholder after load.
+      var typesSidebar = document.getElementById('changelog-types-sidebar');
+
+      function relocateSidebarBlocks(contentEl) {
+        if (!typesSidebar || !contentEl) return;
+        var blocks = contentEl.querySelectorAll('.changelog-types, .changelog-versions');
+        blocks.forEach(function(block) {
+          typesSidebar.appendChild(block);
+        });
+        showSidebarBlocks(currentTab());
+      }
+
+      function currentTab() {
+        var active = document.querySelector('.tab-btn.active');
+        return active ? active.dataset.tab : 'v2';
+      }
+
+      function showSidebarBlocks(tabName) {
+        var blocks = typesSidebar ? typesSidebar.querySelectorAll('.changelog-types, .changelog-versions') : [];
+        blocks.forEach(function(block) {
+          block.style.display = block.getAttribute('data-version') === tabName ? '' : 'none';
+        });
+      }
 
       function activateTab(tabName) {
         tabBtns.forEach(function(btn) {
@@ -107,9 +109,10 @@
         tabPanels.forEach(function(panel) {
           panel.classList.toggle('active', panel.id === 'tab-' + tabName);
         });
+        showSidebarBlocks(tabName);
       }
 
-      function loadFragment(url, contentEl, loadingEl) {
+      function loadFragment(url, contentEl, loadingEl, onLoaded) {
         return fetch(url)
           .then(function(res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -118,6 +121,7 @@
           .then(function(html) {
             contentEl.innerHTML = html;
             loadingEl.style.display = 'none';
+            if (onLoaded) onLoaded(contentEl);
           })
           .catch(function(err) {
             loadingEl.className = 'changelog-error';
@@ -135,7 +139,8 @@
             loadFragment(
               '/changelog-v2.html',
               document.getElementById('v2-content'),
-              document.getElementById('v2-loading')
+              document.getElementById('v2-loading'),
+              relocateSidebarBlocks
             );
           }
 
@@ -144,7 +149,8 @@
             loadFragment(
               '/changelog-v1.html',
               document.getElementById('v1-content'),
-              document.getElementById('v1-loading')
+              document.getElementById('v1-loading'),
+              relocateSidebarBlocks
             );
           }
         });
@@ -155,7 +161,8 @@
       loadFragment(
         '/changelog-v2.html',
         document.getElementById('v2-content'),
-        document.getElementById('v2-loading')
+        document.getElementById('v2-loading'),
+        relocateSidebarBlocks
       );
     })();
   </script>
