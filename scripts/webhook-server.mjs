@@ -32,6 +32,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
@@ -130,10 +131,12 @@ const server = createServer((req, res) => {
     return;
   }
 
-  let body = '';
-  req.on('data', (chunk) => { body += chunk; });
+  const chunks = [];
+  req.on('data', (chunk) => { chunks.push(chunk); });
   req.on('end', () => {
-    // Verify GitHub signature
+    const rawBody = Buffer.concat(chunks);
+
+    // Verify GitHub signature (computed on the raw received bytes)
     const signatureHeader = req.headers['x-hub-signature-256'] || '';
     if (signatureHeader === '') {
       res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -141,7 +144,7 @@ const server = createServer((req, res) => {
       return;
     }
 
-    const expectedSig = 'sha256=' + createHmac('sha256', SECRET).update(body).digest('hex');
+    const expectedSig = 'sha256=' + createHmac('sha256', SECRET).update(rawBody).digest('hex');
     const sigBuffer = Buffer.from(signatureHeader);
     const expectedBuffer = Buffer.from(expectedSig);
 
@@ -151,10 +154,26 @@ const server = createServer((req, res) => {
       return;
     }
 
+    // GitHub may send the payload gzip-compressed (Content-Encoding: gzip).
+    // The signature is computed on the compressed bytes, so we decompress
+    // only after signature verification.
+    let jsonBody;
+    if (req.headers['content-encoding'] === 'gzip') {
+      try {
+        jsonBody = gunzipSync(rawBody).toString('utf8');
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to decompress gzip payload' }));
+        return;
+      }
+    } else {
+      jsonBody = rawBody.toString('utf8');
+    }
+
     // Parse payload
     let data;
     try {
-      data = JSON.parse(body);
+      data = JSON.parse(jsonBody);
     } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
