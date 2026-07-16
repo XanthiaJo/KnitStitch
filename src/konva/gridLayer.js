@@ -9,18 +9,11 @@ const PAN_REDRAW_MS = 16; // ~60fps cap for pan/zoom redraws
 export class GridLayer {
   constructor(store) {
     this.store = store;
-    this.layer = new Konva.Layer({ name: 'gridLayer' });
+    this.layer = new Konva.Layer({ name: 'gridLayer', listening: false });
     this._offscreen = document.createElement('canvas');
     this._imageNode = new Konva.Image({
       image: this._offscreen,
-      listening: true,
-    });
-    this._imageNode.on('click tap', (e) => this._onGridClick(e));
-    this._imageNode.on('mouseenter', () => {
-      document.body.style.cursor = 'pointer';
-    });
-    this._imageNode.on('mouseleave', () => {
-      document.body.style.cursor = 'default';
+      listening: false,
     });
     this.layer.add(this._imageNode);
     this._unsubscribe = store.subscribe((path) => this._onStoreChange(path));
@@ -39,6 +32,10 @@ export class GridLayer {
 
   mount(stage) {
     stage.add(this.layer);
+    stage.on('click.grid tap.grid', (e) => {
+      if (e.target !== stage) return;
+      this._onGridClick(stage.getRelativePointerPosition(), e.evt);
+    });
     this.layer.batchDraw();
   }
 
@@ -52,6 +49,7 @@ export class GridLayer {
 
   destroy() {
     this._unsubscribe();
+    this.layer.getStage()?.off('.grid');
     this.layer.destroy();
   }
 
@@ -243,21 +241,14 @@ export class GridLayer {
     this.layer.batchDraw();
   }
 
-  _onGridClick(e) {
+  _onGridClick(pos, event) {
     // Grid clicks toggle cells only in Sketch workspace when the Fill
     // tool is active (cellFillEnabled). No other workspace allows fill.
     const ws = this.store.get('currentWorkspace');
     const fillEnabled = this.store.get('cellFillEnabled');
-    if (ws !== 'sketch' || !fillEnabled) {
+    if (ws !== 'sketch' || !fillEnabled || event?.button !== 0 || !pos) {
       return;
     }
-    if (e.evt && e.evt.button !== 0) {
-      return;
-    }
-    const stage = this.layer.getStage();
-    if (!stage) return;
-    const pos = stage.getRelativePointerPosition();
-    if (!pos) return;
     const cellW = this.store.get('cellWidthPx');
     const cellH = this.store.get('cellHeightPx');
     const c = Math.floor(pos.x / cellW);

@@ -17,6 +17,13 @@ export function setActiveTool(service, value) {
   service.store.set('sketch.activeTool', value);
   // Fill tool enables cell-fill mode; any other tool disables it
   service.store.set('cellFillEnabled', value === SketchTool.Fill);
+  // main.js already kicks off the solver load shortly after boot, but
+  // trigger it here too (ensureSolver() is idempotent) as a fallback in
+  // case that hasn't started yet, so it's loading by the time the user
+  // completes a constraint/dimension action.
+  if (value === SketchTool.Constraint || value === SketchTool.Dimension) {
+    service.ensureSolver();
+  }
   service.cancelCurrentLine();
 }
 

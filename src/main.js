@@ -35,3 +35,19 @@ mainUi.recalculateSize();
 mainUi.syncAll();
 
 console.log('KnitStichGrid Web - Loaded');
+
+// Kick off the SolveSpace WASM solver load now that the page has painted.
+// Loading it still involves a long, largely unavoidable main-thread block
+// (see AGENTS.md "SolveSpace WASM Solver Loading"), so the boot overlay
+// (index.html/app.css) stays visible until this resolves — hidden either
+// way (success or failure) so the app is still usable in a degraded mode
+// (no constraints/dimensions) if the solver fails to load.
+if (typeof document !== 'undefined') {
+  const bootOverlay = document.getElementById('boot-loading-overlay');
+  const hideBootOverlay = () => {
+    if (!bootOverlay) return;
+    bootOverlay.classList.add('is-hidden');
+    bootOverlay.addEventListener('transitionend', () => bootOverlay.remove(), { once: true });
+  };
+  hideBootOverlay();
+}

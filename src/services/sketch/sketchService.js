@@ -31,7 +31,7 @@ export class SketchService {
     this._selectedLines = new Set();
     this._suppressNextClick = false;
     this._slvsAdapter = null;
-    this._initSlvsAdapter();
+    this._slvsInitPromise = null;
     this._toolRegistry = new ToolRegistry(this);
     this._history = new HistoryManager(this);
 
@@ -39,6 +39,15 @@ export class SketchService {
 
     syncSketchStateToStore(this.store);
     seedIdCountersFromSketch(this);
+
+    // The SolveSpace WASM bundle (~6 MB) is NOT loaded here. Loading it
+    // still involves a long, largely unavoidable main-thread block (see
+    // ensureSolver() for details and AGENTS.md "SolveSpace WASM Solver
+    // Loading" for the full writeup of what's been tried). The caller
+    // (main.js) is responsible for kicking off ensureSolver() once the
+    // page has had a chance to paint, and for showing a loading
+    // indicator while it resolves. It's also triggered lazily by tool
+    // selection (properties.js) and by any solve attempt, as a fallback.
   }
 
   // Tool accessors — the registry owns the tool instances.
@@ -251,7 +260,31 @@ export class SketchService {
    * simultaneously.
    */
   _reconvergeConstraints(preferredMovePoints = null) {
-    if (!this._slvsAdapter?.ready) return;
+    if (!this._slvsAdapter?.ready) {
+      // Solver not loaded yet — trigger the lazy load and reconverge once
+      // it's ready. The constraint/dimension is already stored, so the
+      // geometry will snap to satisfy it as soon as the solver finishes
+      // initializing. Only flush/rebuild if the solve actually moved
+      // points, so a no-op reconverge (e.g. an already-satisfied
+      // dimension) doesn't trigger a disruptive re-render that could
+      // race with the user's next interaction.
+      this.ensureSolver().then(() => {
+        if (!this._slvsAdapter?.ready) return;
+        const sketch = this.store.state.sketch;
+        const before = sketch.points.map((p) => `${p.id}:${p.x},${p.y}`);
+        this._slvsAdapter.solveAndWriteBack(
+          sketch,
+          new Set(),
+          preferredMovePoints,
+        );
+        const after = sketch.points.map((p) => `${p.id}:${p.x},${p.y}`);
+        if (before.length !== after.length || before.some((b, i) => b !== after[i])) {
+          this._flushSketchArrays(this);
+          this._rebuildObjects(this);
+        }
+      });
+      return;
+    }
     this._slvsAdapter.solveAndWriteBack(
       this.store.state.sketch,
       new Set(),
@@ -261,9 +294,37 @@ export class SketchService {
     this._rebuildObjects(this);
   }
 
-  _initSlvsAdapter() {
+  /**
+   * Load and instantiate the SolveSpace WASM solver (idempotent — safe to
+   * call repeatedly; later calls reuse the in-flight or completed load).
+   *
+   * The slvs.js bundle is ~6 MB and embeds its .wasm payload as base64
+   * (Emscripten's SINGLE_FILE=1, see solver-wasm/src/slvs/CMakeLists.txt).
+   * That forces a synchronous base64 decode + non-streaming
+   * WebAssembly.instantiate() instead of streaming compilation, which is
+   * a long, mostly-unavoidable main-thread block (can be minutes) no
+   * matter when it's triggered — see AGENTS.md "SolveSpace WASM Solver
+   * Loading" for what's been tried and the real fix (rebuilding
+   * solver-wasm without SINGLE_FILE=1).
+   *
+   * Given that, this is called explicitly by main.js shortly after boot
+   * (not from this constructor) so first paint isn't blocked, and a
+   * loading overlay covers the app until the returned promise resolves.
+   * It's also triggered as a fallback by tool selection (properties.js)
+   * and any solve attempt, in case main.js's call hasn't finished yet.
+   */
+  ensureSolver() {
+    if (this._slvsAdapter?.ready) return Promise.resolve();
+    if (this._slvsInitPromise) return this._slvsInitPromise;
     this._slvsAdapter = new SlvsAdapter(this.store);
-    this._slvsAdapter.init().catch((e) => console.error('SlvsAdapter init failed', e));
+    this._slvsInitPromise = this._slvsAdapter.init()
+      .then(() => { this._slvsInitPromise = null; })
+      .catch((e) => {
+        console.error('SlvsAdapter init failed', e);
+        this._slvsAdapter = null;
+        this._slvsInitPromise = null;
+      });
+    return this._slvsInitPromise;
   }
 
   /**
@@ -275,7 +336,11 @@ export class SketchService {
    * @returns {number|null} result code or iteration count
    */
   _solve(sketch, movedPoints) {
-    if (!this._slvsAdapter?.ready) return null;
+    if (!this._slvsAdapter?.ready) {
+      // Trigger the lazy load so future drags solve; this drag is unsolved.
+      this.ensureSolver();
+      return null;
+    }
     return this._slvsAdapter.solveAndWriteBack(sketch, movedPoints);
   }
 

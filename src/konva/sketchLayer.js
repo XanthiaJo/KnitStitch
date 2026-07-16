@@ -9,6 +9,7 @@ import {
 import { SketchOverlay } from './sketchOverlay.js';
 import { renderConstraintIcons } from './constraintIcons.js';
 import { renderDimensions } from './dimensionRenderer.js';
+import { nearestLine, nearestPoint } from '../utils/geometry.js';
 
 const RENDER_TRIGGERS = new Set([
   'sketch.lines',
@@ -31,7 +32,7 @@ export class SketchLayer {
   constructor(store, sketchService) {
     this.store = store;
     this.service = sketchService;
-    this.layer = new Konva.Layer({ name: 'sketchLayer' });
+    this.layer = new Konva.Layer({ name: 'sketchLayer', listening: false });
     this._overlay = new SketchOverlay(store);
     this._unsubscribe = store.subscribe((path) => this._onStoreChange(path));
   }
@@ -44,6 +45,7 @@ export class SketchLayer {
 
   destroy() {
     this._unsubscribe();
+    this._stageContent?.removeEventListener('mousemove', this._onNativeMouseMove);
     this._overlay.destroy();
     this.layer.destroy();
   }
@@ -58,21 +60,35 @@ export class SketchLayer {
   }
 
   _setupEvents(stage) {
-    // Click on empty space → forward to VM
-    stage.on('click tap', (e) => {
-      if (!this.store.get('sketch.isActive')) return;
-      const pos = stage.getRelativePointerPosition();
-      if (!pos) return;
-      const target = e.target;
-      if (target !== this.layer && target.getLayer() === this.layer) return;
-      this.service.onCanvasClick({ x: pos.x, y: pos.y }, { snapEnabled: !e.evt.ctrlKey });
-    });
+    this._stageContent = stage.content;
+    this._onNativeMouseMove = (event) => {
+      stage.setPointersPositions(event);
+      this._handlePointerMove(stage, event);
+    };
+    this._stageContent.addEventListener('mousemove', this._onNativeMouseMove);
 
-    stage.on('mousemove', (e) => {
-      if (!this.store.get('sketch.isActive')) return;
+    stage.on('click tap', (e) => {
+      if (!this.store.get('sketch.isActive') || this.store.get('cellFillEnabled')) return;
       const pos = stage.getRelativePointerPosition();
       if (!pos) return;
-      this.service.onCanvasMouseMove({ x: pos.x, y: pos.y }, { snapEnabled: !e.evt.ctrlKey });
+      const target = this._hitTest(pos);
+      if (target?.dimension) {
+        if (e.evt.detail === 2) this.service._openDimEdit(target.dimension);
+        return;
+      }
+      if (target?.constraint) {
+        this.service.selectConstraint(target.constraint, e.evt.ctrlKey);
+        return;
+      }
+      if (target?.point) {
+        this.service.onPointClick(target.point, pos, { snapEnabled: !e.evt.ctrlKey, multiSelect: e.evt.ctrlKey });
+        return;
+      }
+      if (target?.line) {
+        this.service.onLineClick(target.line, pos, { snapEnabled: !e.evt.ctrlKey, multiSelect: e.evt.ctrlKey });
+        return;
+      }
+      this.service.onCanvasClick(pos, { snapEnabled: !e.evt.ctrlKey });
     });
 
     stage.on('mousedown', (e) => {
@@ -81,10 +97,19 @@ export class SketchLayer {
         this.service.onRightMouseDown();
         return;
       }
-      if (e.evt.button === 1) return; // middle button = pan, handled by UI
+      if (e.evt.button === 1) return;
       const pos = stage.getRelativePointerPosition();
-      if (!pos) return;
-      this.service.onCanvasMouseDown({ x: pos.x, y: pos.y }, { snapEnabled: !e.evt.ctrlKey });
+      if (!pos || this.store.get('cellFillEnabled')) return;
+      const target = this._hitTest(pos);
+      if (target?.dimension) {
+        this.service.selectDimension(target.dimension, e.evt.ctrlKey);
+        return;
+      }
+      if (target?.constraint) {
+        this.service.selectConstraint(target.constraint, e.evt.ctrlKey);
+        return;
+      }
+      this.service.onCanvasMouseDown(pos, { snapEnabled: !e.evt.ctrlKey });
     });
 
     stage.on('mouseup', () => {
@@ -99,6 +124,60 @@ export class SketchLayer {
       e.evt.preventDefault();
       this.service.exitToSelect();
     });
+  }
+
+  _handlePointerMove(stage, event) {
+    if (!this.store.get('sketch.isActive')) return;
+    const pos = stage.getRelativePointerPosition();
+    if (!pos) return;
+    const target = this._hitTest(pos);
+    document.body.style.cursor = target ? 'pointer' : 'default';
+    this.service.onCanvasMouseMove(pos, { snapEnabled: !event.ctrlKey });
+  }
+
+  _hitTest(position) {
+    const sketch = this.store.state.sketch;
+    const dimension = this._findDimension(position, sketch.dimensions);
+    if (dimension) return { dimension };
+    const point = nearestPoint(sketch.points, position, 10);
+    if (point) return { point };
+    const constraint = this._findConstraint(position, sketch.constraints);
+    if (constraint) return { constraint };
+    const line = nearestLine(sketch.lines, position, 10);
+    return line ? { line } : null;
+  }
+
+  _findDimension(position, dimensions = []) {
+    return dimensions.find((dim) => {
+      const angle = -(dim.labelAngle || 0) * Math.PI / 180;
+      const dx = position.x - dim.labelPos.x;
+      const dy = position.y - dim.labelPos.y;
+      const x = dx * Math.cos(angle) - dy * Math.sin(angle);
+      const y = dx * Math.sin(angle) + dy * Math.cos(angle);
+      return Math.abs(x) <= dim.labelText.length * 3 + 8 && Math.abs(y) <= 10;
+    }) ?? null;
+  }
+
+  _findConstraint(position, constraints = []) {
+    return constraints.find((constraint) => {
+      let point = constraint.pointA;
+      if (!point && constraint.lineA && constraint.lineB) {
+        point = this.service._findSharedPoint(constraint.lineA, constraint.lineB);
+      }
+      if (!point && constraint.lineA && constraint.lineB) {
+        point = {
+          x: (constraint.lineA.start.x + constraint.lineA.end.x + constraint.lineB.start.x + constraint.lineB.end.x) / 4,
+          y: (constraint.lineA.start.y + constraint.lineA.end.y + constraint.lineB.start.y + constraint.lineB.end.y) / 4,
+        };
+      }
+      if (!point && constraint.lineA) {
+        point = {
+          x: (constraint.lineA.start.x + constraint.lineA.end.x) / 2,
+          y: (constraint.lineA.start.y + constraint.lineA.end.y) / 2,
+        };
+      }
+      return point && Math.hypot(position.x - point.x, position.y - point.y) <= 12;
+    }) ?? null;
   }
 
   _render() {
