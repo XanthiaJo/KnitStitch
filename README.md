@@ -12,4 +12,4 @@ This is very much a work in progress with lots of ideas and features to add. If 
 
 ## Deployment
 
-The app is hosted on a VPS and deploys automatically when commits land on the `master` branch via a GitHub webhook. The webhook (`webhook.php`) verifies the GitHub signature, pulls the latest code, and runs `npm ci` + `npm run build` to produce the static `dist/` directory.
+The app is hosted on a VPS and deploys automatically when commits land on the `master` branch via a GitHub webhook. A small Node.js webhook server (`scripts/webhook-server.mjs`, kept alive with PM2) verifies the GitHub signature, pulls the latest code, and runs `npm ci` + `npm run build` to produce the static `dist/` directory.

@@ -67,9 +67,9 @@ Primary source layout:
 - `src/utils/geometry.js` - pure geometry helpers (distance, nearestPoint, applyAngleSnap)
 - `unit/` - Vitest unit tests (pure logic)
 - `e2e/` - Playwright E2E tests (user interaction coverage)
-- `scripts/` - build tooling (`generate-build-info.mjs` version/changelog generator)
+- `scripts/` - build tooling (`generate-build-info.mjs` version/changelog generator, `webhook-server.mjs` deploy webhook)
 - `pages/` - standalone HTML pages (changelog page with v1/v2 tabs)
-- `webhook.php` - GitHub webhook listener for VPS auto-deploy (see VPS Deploy section)
+- `ecosystem.config.cjs` - PM2 config for the webhook server
 - `.env.example` - template for `.env` (contains `GITHUB_WEBHOOK_SECRET`)
 - `docs/` - human-level docs: architecture overview, project map, roadmap, testing guide
 - `docs/agents/` - agent-level docs: low-level architecture, import/export maps, detailed roadmap
@@ -227,7 +227,8 @@ The e2e tests are the source of truth for whether the system works correctly fro
 
 The VPS auto-deploys when GitHub receives a push to `master`.
 
-`webhook.php` is a standalone PHP script (no framework bootstrap) that:
+`scripts/webhook-server.mjs` is a small Node.js HTTP server (no external
+dependencies) that:
 
 1. Verifies the GitHub HMAC-SHA256 signature using `GITHUB_WEBHOOK_SECRET` from `.env`
 2. Checks that the push is to `refs/heads/master`
@@ -236,26 +237,41 @@ The VPS auto-deploys when GitHub receives a push to `master`.
 5. Runs `npm run build-info` to regenerate build info + changelogs
 6. Runs `npm run build` to produce `dist/`
 
-The web server serves the `dist/` directory as the document root.
+The web server (nginx) serves the `dist/` directory as the document root and
+proxies `/webhook` to the Node.js webhook server on `127.0.0.1:3001`.
 
 ### Setup
 
 1. Copy `.env.example` to `.env` on the VPS and set `GITHUB_WEBHOOK_SECRET`
-2. In GitHub repo settings → Webhooks → Add webhook:
-   - Payload URL: `https://www.knitstitch.misssponto.me.uk/webhook.php`
+2. Install PM2 globally and start the webhook server:
+   ```bash
+   npm install -g pm2
+   pm2 start ecosystem.config.cjs
+   pm2 save
+   pm2 startup   # follow printed instructions to enable boot-time startup
+   ```
+3. Add nginx proxy for the webhook (in the site config):
+   ```nginx
+   location /webhook {
+     proxy_pass http://127.0.0.1:3001;
+     proxy_set_header X-Forwarded-For $remote_addr;
+   }
+   ```
+4. In GitHub repo settings → Webhooks → Add webhook:
+   - Payload URL: `https://www.knitstitch.misssponto.me.uk/webhook`
    - Content type: `application/json`
    - Secret: same value as `GITHUB_WEBHOOK_SECRET`
    - Events: Just the push event
-3. Ensure the VPS repo has the GitHub remote configured and SSH keys set up
-4. Ensure Node.js (with npm) is installed on the VPS (via nvm or system package)
-5. Point the web server document root to `dist/`
+5. Ensure the VPS repo has the GitHub remote configured and SSH keys set up
+6. Ensure Node.js (with npm) is installed on the VPS (via nvm or system package)
+7. Point the web server document root to `dist/`
 
 ### Manual deploy (fallback)
 
 SSH into the VPS and run:
 
 ```bash
-cd /var/www/knitstitch
+cd ~/htdocs/knitstitch
 git pull origin master
 npm ci
 npm run build-info
