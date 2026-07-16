@@ -37,15 +37,20 @@ changelog generation, ported from the CraftCMS `GenerateBuildInfo.php` script.
 
 - `scripts/generate-build-info.mjs` - Node.js build info generator. Reads git
   tags and conventional commit messages to derive a version. Supports
-  `--format=js` (outputs `window.BUILD_INFO` object) and `--format=md` (outputs
-  markdown changelog). Run via `npm run build-info` or `npm run build-changelog`.
+  `--format=js` (outputs `window.BUILD_INFO` object), `--format=md` (outputs
+  markdown changelog), and `--format=html` (outputs HTML changelog fragment).
+  Run via `npm run build-info` or `npm run build-changelog`.
 - `src/buildInfo.js` - generated JS file exposing `window.BUILD_INFO` with
   version, production version, commit SHA, and commit count
 - `CHANGELOG.md` - generated markdown changelog grouped by change type
   (breaking, feature, fix, docs, refactor, test, chore, other)
-- `docs/craftcms-changelog-history.twig` - historical changelog from the
-  CraftCMS era, preserved as-is for reference. The going-forward changelog is
+- `public/changelog-v2.html` - generated HTML changelog fragment for the
+  changelog page, produced from KnitStitch's own git log
+- `public/changelog-v1.html` - historical changelog from the CraftCMS era,
+  preserved as an HTML fragment for the v1 tab. The going-forward changelog is
   generated from KnitStitch's own git log.
+- `pages/changelog.html` - changelog page with v1/v2 tabs, separated layout
+  (global header, page header, content area, footer)
 
 ## Architecture
 
@@ -63,6 +68,9 @@ Primary source layout:
 - `unit/` - Vitest unit tests (pure logic)
 - `e2e/` - Playwright E2E tests (user interaction coverage)
 - `scripts/` - build tooling (`generate-build-info.mjs` version/changelog generator)
+- `pages/` - standalone HTML pages (changelog page with v1/v2 tabs)
+- `webhook.php` - GitHub webhook listener for VPS auto-deploy (see VPS Deploy section)
+- `.env.example` - template for `.env` (contains `GITHUB_WEBHOOK_SECRET`)
 - `docs/` - human-level docs: architecture overview, project map, roadmap, testing guide
 - `docs/agents/` - agent-level docs: low-level architecture, import/export maps, detailed roadmap
 
@@ -214,6 +222,45 @@ npm run build
 - Integration between components
 
 The e2e tests are the source of truth for whether the system works correctly from a user perspective.
+
+## VPS Deploy via GitHub Webhook
+
+The VPS auto-deploys when GitHub receives a push to `master`.
+
+`webhook.php` is a standalone PHP script (no framework bootstrap) that:
+
+1. Verifies the GitHub HMAC-SHA256 signature using `GITHUB_WEBHOOK_SECRET` from `.env`
+2. Checks that the push is to `refs/heads/master`
+3. Runs `git fetch origin master` + `git reset --hard origin/master`
+4. Runs `npm ci` to install dependencies
+5. Runs `npm run build-info` to regenerate build info + changelogs
+6. Runs `npm run build` to produce `dist/`
+
+The web server serves the `dist/` directory as the document root.
+
+### Setup
+
+1. Copy `.env.example` to `.env` on the VPS and set `GITHUB_WEBHOOK_SECRET`
+2. In GitHub repo settings → Webhooks → Add webhook:
+   - Payload URL: `https://www.knitstitch.misssponto.me.uk/webhook.php`
+   - Content type: `application/json`
+   - Secret: same value as `GITHUB_WEBHOOK_SECRET`
+   - Events: Just the push event
+3. Ensure the VPS repo has the GitHub remote configured and SSH keys set up
+4. Ensure Node.js (with npm) is installed on the VPS (via nvm or system package)
+5. Point the web server document root to `dist/`
+
+### Manual deploy (fallback)
+
+SSH into the VPS and run:
+
+```bash
+cd /var/www/knitstitch
+git pull origin master
+npm ci
+npm run build-info
+npm run build
+```
 
 ## Local Artifacts
 

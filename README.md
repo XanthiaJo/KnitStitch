@@ -9,3 +9,7 @@ As I used the machine, I found that the available software tools were either too
 KnitStitch is a web-based application for digital knitting design. It's meant to be straightforward to use while still providing the functionality needed to create patterns over different sizes and machines/yarns.
 
 This is very much a work in progress with lots of ideas and features to add. If you have any suggestions or want to contribute, please let me know!
+
+## Deployment
+
+The app is hosted on a VPS and deploys automatically when commits land on the `master` branch via a GitHub webhook. The webhook (`webhook.php`) verifies the GitHub signature, pulls the latest code, and runs `npm ci` + `npm run build` to produce the static `dist/` directory.
