@@ -1,0 +1,137 @@
+<div class="container-sections">
+  <section class="panel panel--padded">
+    <h2>Build Snapshot</h2>
+    <div class="container-actions">
+      <span class="chip color-pair-ink">Version v2.1.0.3</span>
+      <span class="chip color-pair-stone">6 commits</span>
+    </div>
+    <p class="body">Generated from conventional commits and git tags during the build.</p>
+  </section>
+  <section class="panel panel--padded">
+    <h2>Change Types</h2>
+    <nav class="container-actions" aria-label="Change log sections">
+      <a class="chip color-pair-red" href="#breaking-changes">Breaking Changes</a>
+      <a class="chip color-pair-gold" href="#feature-changes">Features</a>
+      <a class="chip color-pair-sky" href="#docs-changes">Documentation</a>
+      <a class="chip color-pair-stone" href="#refactor-changes">Refactors</a>
+      <a class="chip color-pair-olive" href="#chore-changes">Maintenance</a>
+      <a class="chip color-pair-ink" href="#other-changes">Other Changes</a>
+    </nav>
+  </section>
+  <section class="panel panel--padded" id="breaking-changes">
+    <h3>Breaking Changes</h3>
+    <ul class="list">
+      <li>
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-red">Breaking Changes</span>
+            <span class="caption">v2.0.0 - 4536f67 - 2026-07-14</span>
+          </div>
+          <h4>Initialize standalone KnitStitch Grid app</h4>
+          <ul>
+            <li>extract app from CraftCMS into standalone Vite project</li>
+            <li>serve from own subdomain (www.knitstitch.misssponto.me.uk)</li>
+            <li>standalone index.html with simple header, no Craft partials</li>
+            <li>extract CSS into public/css/app.css with design tokens and components</li>
+            <li>update test configs for Vite dev server (no DDEV/CraftCMS needed)</li>
+            <li>93 unit tests passing, Playwright E2E auto-starts dev server</li>
+            <li>KnitStitch is now a standalone app, no longer embedded in CraftCMS.</li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="feature-changes">
+    <h3>Features</h3>
+    <ul class="list">
+      <li>
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-gold">Features</span>
+            <span class="caption">v2.1.0 - 605165f - 2026-07-15</span>
+          </div>
+          <h4>Integrate SolveSpace WASM constraint solver</h4>
+          <ul>
+            <li>Replace the hand-rolled gradient-descent solver with SolveSpace's Newton's-method solver, compiled to WebAssembly. Shipped behind a solverBackend feature flag ('native' | 'slvs') so the existing solver stays available as a fallback.</li>
+            <li>The SolveSpace solver is built from a fork of solvespace/solvespace (XanthiaJo/SolverWasm) which already includes embind JS bindings and a CMake slvs-wasm target. The built slvs.js (6 MB, single-file with embedded WASM) is committed as a static asset in public/wasm/.</li>
+            <li>Key pieces:</li>
+            <li>bridges KnitStitch's sketch model (points, lines, constraints, dimensions in pixels) to SolveSpace entities. Uses a uniform scale (X-axis stitch scale) for both axes to preserve angles despite the non-square grid.</li>
+            <li>sketchService._solve: single dispatch point that routes to the SLVS adapter when the flag is set, otherwise falls through to the existing native solver path.</li>
+            <li>all three dual-solver branches replaced with service._solve() calls.</li>
+            <li>solverBackend flag added to sketch state, currently set to 'slvs'.</li>
+            <li>SolveSpace is GPL-3.0-or-later, so KnitStitch adopts GPL-3.0-or-later accordingly (LICENSE added, package.json updated).</li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="docs-changes">
+    <h3>Documentation</h3>
+    <ul class="list">
+      <li>
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-sky">Documentation</span>
+            <span class="caption">v2.1.0.3 - 9eedd1b - 2026-07-16</span>
+          </div>
+          <h4>Rewrite git-rules for KnitStitch project</h4>
+          <ul>
+            <li>replace Craft CMS references with Node.js tooling</li>
+            <li>update scopes to match project areas (sketch, solver, grid, etc.)</li>
+            <li>add style commit type, update examples</li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="refactor-changes">
+    <h3>Refactors</h3>
+    <ul class="list">
+      <li>
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-stone">Refactors</span>
+            <span class="caption">v2.1.0.2 - 11f5463 - 2026-07-16</span>
+          </div>
+          <h4>Remove dead native solver code</h4>
+          <ul>
+            <li>delete 7 native solver modules and 4 unit tests (2275 lines)</li>
+            <li>remove solverBackend flag, native fallback branches, enforce* calls</li>
+            <li>adapter solve() distinguishes user-drag from reconverge semantics</li>
+            <li>accept RESULT_REDUNDANT_OKAY, restore anchor positions in writeBack</li>
+            <li>keep perpendicularFeasibility, dofAnalyzer, overconstraintChecker</li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="chore-changes">
+    <h3>Maintenance</h3>
+    <ul class="list">
+      <li>
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-olive">Maintenance</span>
+            <span class="caption">v2.0.0.1 - a3edaf8 - 2026-07-15</span>
+          </div>
+          <h4>Add VS Code workspace config and build tooling</h4>
+          <p>Add VS Code launch/tasks config, the build-info generator script, generated buildInfo.js, CHANGELOG.md, and the historical CraftCMS changelog reference.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <section class="panel panel--padded" id="other-changes">
+    <h3>Other Changes</h3>
+    <ul class="list">
+      <li>
+        <div class="container-content">
+          <div class="container-actions">
+          <span class="chip color-pair-ink">Other Changes</span>
+            <span class="caption">v2.1.0.1 - 4f449b7 - 2026-07-15</span>
+          </div>
+          <h4>Update app styles and index.html</h4>
+        </div>
+      </li>
+    </ul>
+  </section>
+</div>

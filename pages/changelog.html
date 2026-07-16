@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Changelog — KnitStitch Grid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="page-document">
+
+  <!-- ===== Global Header ===== -->
+  <div class="global-header">
+    <div class="global-bar">
+      <div class="shell global-bar-row">
+        <a class="global-bar-link" href="https://www.misssponto.me.uk/">Miss Sponto</a>
+        <a class="global-bar-link active" href="/">KnitStitch</a>
+      </div>
+    </div>
+
+    <header class="site-header">
+      <div class="shell">
+        <div class="header-row">
+          <h1 class="brand">KnitStitch</h1>
+          <nav class="main-nav">
+            <div class="main-nav-item">
+              <a class="main-nav-link" href="/">Home</a>
+            </div>
+            <div class="main-nav-item">
+              <a class="main-nav-link" href="/README.md">ReadMe.md</a>
+            </div>
+            <div class="main-nav-item">
+              <a class="main-nav-link active" href="/pages/changelog.html">ChangeLog</a>
+            </div>
+          </nav>
+        </div>
+      </div>
+    </header>
+  </div>
+
+  <!-- ===== Page Header ===== -->
+  <div class="page-header">
+    <div class="shell">
+      <h1>Changelog</h1>
+      <p class="page-subtitle">Version history for KnitStitch Grid</p>
+    </div>
+  </div>
+
+  <!-- ===== Content Area ===== -->
+  <div class="content-area">
+    <div class="shell">
+
+      <!-- Tab bar -->
+      <div class="tab-bar" role="tablist">
+        <button class="tab-btn active" role="tab" data-tab="v2" aria-selected="true">v2 — KnitStitch</button>
+        <button class="tab-btn" role="tab" data-tab="v1" aria-selected="false">v1 — CraftCMS</button>
+      </div>
+
+      <!-- v2 tab — generated from KnitStitch git history -->
+      <div class="tab-panel active" id="tab-v2" role="tabpanel">
+        <div class="changelog-loading" id="v2-loading">Loading v2 changelog…</div>
+        <div id="v2-content"></div>
+      </div>
+
+      <!-- v1 tab — historical CraftCMS era changelog -->
+      <div class="tab-panel" id="tab-v1" role="tabpanel">
+        <div class="changelog-loading" id="v1-loading">Loading v1 changelog…</div>
+        <div id="v1-content"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <div class="shell footer-row">
+      <div class="footer-version" id="footer-version"></div>
+    </div>
+  </footer>
+
+  <script src="/js/buildInfo.js"></script>
+  <script>
+    (function() {
+      var el = document.getElementById('footer-version');
+      if (el && window.BUILD_INFO) {
+        el.textContent = 'v' + window.BUILD_INFO.version.replace(/^v/, '') + ' (' + window.BUILD_INFO.commit + ')';
+      }
+    })();
+  </script>
+
+  <!-- Tab switching + content loading -->
+  <script>
+    (function() {
+      var tabBtns = document.querySelectorAll('.tab-btn');
+      var tabPanels = document.querySelectorAll('.tab-panel');
+      var v2Loaded = false;
+      var v1Loaded = false;
+
+      function activateTab(tabName) {
+        tabBtns.forEach(function(btn) {
+          var isActive = btn.dataset.tab === tabName;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        tabPanels.forEach(function(panel) {
+          panel.classList.toggle('active', panel.id === 'tab-' + tabName);
+        });
+      }
+
+      function loadFragment(url, contentEl, loadingEl) {
+        return fetch(url)
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+          })
+          .then(function(html) {
+            contentEl.innerHTML = html;
+            loadingEl.style.display = 'none';
+          })
+          .catch(function(err) {
+            loadingEl.className = 'changelog-error';
+            loadingEl.textContent = 'Failed to load changelog: ' + err.message;
+          });
+      }
+
+      tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tab = btn.dataset.tab;
+          activateTab(tab);
+
+          if (tab === 'v2' && !v2Loaded) {
+            v2Loaded = true;
+            loadFragment(
+              '/changelog-v2.html',
+              document.getElementById('v2-content'),
+              document.getElementById('v2-loading')
+            );
+          }
+
+          if (tab === 'v1' && !v1Loaded) {
+            v1Loaded = true;
+            loadFragment(
+              '/changelog-v1.html',
+              document.getElementById('v1-content'),
+              document.getElementById('v1-loading')
+            );
+          }
+        });
+      });
+
+      // Load the default (v2) tab on page load
+      v2Loaded = true;
+      loadFragment(
+        '/changelog-v2.html',
+        document.getElementById('v2-content'),
+        document.getElementById('v2-loading')
+      );
+    })();
+  </script>
+</body>
+</html>

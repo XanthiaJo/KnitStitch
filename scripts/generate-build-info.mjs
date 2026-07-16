@@ -5,11 +5,12 @@
  *   - Reads git tags and commit history
  *   - Derives a version from conventional commit messages (feat:, fix:, BREAKING CHANGE)
  *   - Non-feat/fix commits increment the revision (4th number)
- *   - Outputs a JS file (window.BUILD_INFO) or markdown changelog
+ *   - Outputs a JS file (window.BUILD_INFO), markdown changelog, or HTML changelog fragment
  *
  * Usage:
  *   node scripts/generate-build-info.mjs --root=. --output=src/buildInfo.js --format=js
  *   node scripts/generate-build-info.mjs --root=. --output=CHANGELOG.md --format=md
+ *   node scripts/generate-build-info.mjs --root=. --output=public/changelog-v2.html --format=html
  *
  * Parameters:
  *   --root     Repository root path (required)
@@ -167,10 +168,9 @@ function cleanCommitDescription(subject, body) {
       if (/^[-*]\s+/.test(line)) {
         processCurrentBullet();
         currentBullet = trimmed.replace(/^[-*]\s+/, '');
-      } else if (currentBullet !== null && /^\s+/.test(line)) {
+      } else if (currentBullet !== null) {
         currentBullet += ' ' + trimmed;
       } else {
-        processCurrentBullet();
         currentBullet = trimmed;
       }
     }
@@ -266,7 +266,10 @@ for (const record of logOutput.split('\x1e')) {
   const parts = record.split('\x1f', 4);
   if (parts.length !== 4) continue;
 
-  const [sha, date, subject, body] = parts;
+  const sha = parts[0].trim();
+  const date = parts[1].trim();
+  const subject = parts[2].trim();
+  const body = parts[3];
 
   if (taggedVersions[sha]) {
     resolvedVersion = taggedVersions[sha];
@@ -382,8 +385,101 @@ if (format === 'js') {
   }
 
   content = lines.join('\n');
+} else if (format === 'html') {
+  const groupLabels = {
+    breaking: 'Breaking Changes',
+    feature: 'Features',
+    fix: 'Fixes',
+    docs: 'Documentation',
+    refactor: 'Refactors',
+    test: 'Tests',
+    chore: 'Maintenance',
+    other: 'Other Changes',
+  };
+
+  const groupChipClass = {
+    breaking: 'color-pair-red',
+    feature: 'color-pair-gold',
+    fix: 'color-pair-sage',
+    docs: 'color-pair-sky',
+    refactor: 'color-pair-stone',
+    test: 'color-pair-plum',
+    chore: 'color-pair-olive',
+    other: 'color-pair-ink',
+  };
+
+  const esc = (s) =>
+    String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+  const html = [];
+  html.push('<div class="container-sections">');
+
+  // Build snapshot panel
+  html.push('  <section class="panel panel--padded">');
+  html.push('    <h2>Build Snapshot</h2>');
+  html.push('    <div class="container-actions">');
+  html.push(`      <span class="chip ${groupChipClass.other}">Version ${esc(displayVersion)}</span>`);
+  html.push(`      <span class="chip color-pair-stone">${commitCount} commits</span>`);
+  html.push('    </div>');
+  html.push('    <p class="body">Generated from conventional commits and git tags during the build.</p>');
+  html.push('  </section>');
+
+  // Change type nav
+  html.push('  <section class="panel panel--padded">');
+  html.push('    <h2>Change Types</h2>');
+  html.push('    <nav class="container-actions" aria-label="Change log sections">');
+  for (const [groupKey, groupLabel] of Object.entries(groupLabels)) {
+    const items = changeGroups[groupKey];
+    if (!items || items.length === 0) continue;
+    html.push(`      <a class="chip ${groupChipClass[groupKey]}" href="#${groupKey}-changes">${groupLabel}</a>`);
+  }
+  html.push('    </nav>');
+  html.push('  </section>');
+
+  // Each group
+  for (const [groupKey, groupLabel] of Object.entries(groupLabels)) {
+    const items = changeGroups[groupKey];
+    if (!items || items.length === 0) continue;
+
+    html.push(`  <section class="panel panel--padded" id="${groupKey}-changes">`);
+    html.push(`    <h3>${esc(groupLabel)}</h3>`);
+    html.push('    <ul class="list">');
+
+    for (const item of [...items].reverse()) {
+      html.push('      <li>');
+      html.push('        <div class="container-content">');
+      html.push('          <div class="container-actions">');
+      html.push(`          <span class="chip ${groupChipClass[groupKey]}">${esc(groupLabel)}</span>`);
+      html.push(`            <span class="caption">${esc(item.version)} - ${esc(item.sha)} - ${esc(item.date)}</span>`);
+      html.push('          </div>');
+      html.push(`          <h4>${esc(item.subject)}</h4>`);
+      if (item.description) {
+        if (Array.isArray(item.description)) {
+          html.push('          <ul>');
+          for (const bullet of item.description) {
+            html.push(`            <li>${esc(bullet)}</li>`);
+          }
+          html.push('          </ul>');
+        } else {
+          html.push(`          <p>${esc(item.description)}</p>`);
+        }
+      }
+      html.push('        </div>');
+      html.push('      </li>');
+    }
+
+    html.push('    </ul>');
+    html.push('  </section>');
+  }
+
+  html.push('</div>');
+  content = html.join('\n');
 } else {
-  console.error(`Unknown format: ${format}. Supported formats: js, md`);
+  console.error(`Unknown format: ${format}. Supported formats: js, md, html`);
   process.exit(1);
 }
 
