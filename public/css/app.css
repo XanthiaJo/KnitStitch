@@ -38,8 +38,8 @@
     --type-h4: 18px;
     --type-h5: 14px;
     --type-h6: 12px;
-    --type-body: 16px;
-    --type-subtitle: 14px;
+    --type-body: 14px;
+    --type-subtitle: 13px;
     --type-caption: 12px;
     --type-button: 12px;
 }
@@ -108,7 +108,7 @@ h2 {
 }
 
 h3 {
-    margin-block: 1.25em 0.45em;
+    margin-block: 1.25em 0.25em;
     margin-inline: 0;
     font-family: var(--font-body);
     font-size: var(--type-h3);
@@ -152,19 +152,9 @@ h6:first-child {
     margin-block-start: 0;
 }
 
-.body,
-.container-content {
+.body {
     font-size: var(--type-body);
     line-height: 1.7;
-}
-
-.subtitle {
-    font-size: var(--type-subtitle);
-    line-height: 1.5;
-    color: var(--body-light);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin: 0 0 14px;
 }
 
 .caption {
@@ -180,6 +170,49 @@ blockquote,
 pre,
 table {
     margin: 0 0 1.1em;
+}
+
+ul,
+ol {
+    list-style: none;
+    padding-left: 0;
+    margin: 0.6em 0 0;
+    display: grid;
+    gap: 5px;
+}
+
+ul > li {
+    position: relative;
+    padding-left: 1.2em;
+    line-height: 1.6;
+}
+
+ul > li::before {
+    content: "–";
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+ol {
+    gap: 12px;
+    counter-reset: step;
+}
+
+ol > li {
+    position: relative;
+    padding-left: 1.6em;
+    line-height: 1.6;
+    counter-increment: step;
+}
+
+ol > li::before {
+    content: counter(step) ".";
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+    font-weight: 600;
 }
 
 blockquote {
@@ -236,7 +269,7 @@ td {
 
 .page-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     gap: 14px;
     align-items: start;
 }
@@ -294,7 +327,6 @@ td {
     position: sticky;
     top: 36px;
     z-index: 100;
-    margin-bottom: 20px;
 }
 
 .header-row {
@@ -350,96 +382,11 @@ td {
     color: var(--primary);
 }
 
-.main-nav-item.has-submenu .main-nav-link::after {
-    content: "";
-    width: 7px;
-    height: 7px;
-    margin-left: 8px;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
-    transform: rotate(45deg) translateY(-1px);
-}
-
-.main-nav-submenu {
-    position: absolute;
-    top: calc(100% - 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 220px;
-    padding: 10px 0;
-    background: var(--tertiary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: var(--shadow-lg);
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
-    z-index: 120;
-}
-
-.main-nav-item:hover .main-nav-submenu,
-.main-nav-item:focus-within .main-nav-submenu {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(4px);
-}
-
-.main-nav-submenu-link {
-    display: block;
-    padding: 10px 16px;
-    color: var(--body-dark);
-    font-size: var(--type-h5);
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    text-transform: none;
-    white-space: nowrap;
-}
-
-.main-nav-submenu-link:hover {
-    background: var(--secondary-light);
-    opacity: 1;
-}
-
-.header-project-links {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-self: end;
-}
-
-.project-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 11px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--tertiary);
-    color: var(--body-dark);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.6px;
-    white-space: nowrap;
-    text-decoration: none;
-    box-shadow: var(--shadow-sm);
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
-}
-
-.project-link:hover {
-    opacity: 1;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.project-link svg {
-    width: 16px;
-    height: 16px;
-    display: block;
-    fill: currentColor;
-    flex: 0 0 auto;
+/* Active nav state driven by body class — the header is a shared
+   include so the active link can't be hardcoded in the partial. */
+.page-home .main-nav-link[href="/"],
+.page-changelog .main-nav-link[href="/pages/changelog.html"] {
+    color: var(--primary);
 }
 
 /* ==========================================================================
@@ -476,11 +423,6 @@ button,
 .button-primary:hover {
     background: var(--primary);
     border-color: var(--primary);
-}
-
-.button-secondary {
-    background: transparent;
-    color: var(--body-dark);
 }
 
 .button-sm {
@@ -558,16 +500,6 @@ select:focus {
 .container-sections {
     display: grid;
     gap: 14px;
-}
-
-.container-section {
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-}
-
-.container-sections > .container-section:first-child {
-    border-top: 0;
-    padding-top: 0;
 }
 
 /* Headed panel section — a panel with a grey header bar and white body. */
@@ -961,45 +893,67 @@ select:focus {
    Changelog Page — Panels, Chips, Lists, Tabs
    ========================================================================== */
 
-/* --- Page layout sections (global header / page header / content / footer) --- */
+/* --- Page layout sections (global header / page subheader / main / footer) --- */
 .page-document {
-    display: flex;
-    flex-direction: column;
     min-height: 100vh;
 }
 
-.page-document .global-header {
+.page-document .site-footer {
+    margin-top: auto;
+}
+
+/* --- Page sub-header (bordered container holding the page title) --- */
+.page-subheader {
+    padding: 32px 0 14px;
+    margin-bottom: 14px;
     flex-shrink: 0;
 }
 
-.page-document .page-header {
-    flex-shrink: 0;
-    background: var(--tertiary);
-    border-bottom: 1px solid var(--border);
-    padding: 28px 0 20px;
-}
-
-.page-document .page-header .shell {
+.page-subheader-inner {
+    text-align: center;
+    padding: 22px 28px;
+    background: var(--secondary-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
+    align-items: center;
+    justify-content: center;
 }
 
-.page-document .page-header h1 {
+.page-subheader-inner h1 {
     margin: 0;
-    font-size: var(--type-h2);
 }
 
-.page-document .page-header .page-subtitle {
-    color: var(--body-light);
-    font-size: var(--type-subtitle);
-}
-
-.page-document .content-area {
+/* --- Main content area --- */
+.page-main {
+    margin: 0 auto 60px;
     flex: 1;
-    padding: 24px 0;
+}
+
+/* --- Container (bordered box for main content column) --- */
+.container {
+    min-width: 0;
+    padding: 14px;
+    background: var(--secondary-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+/* --- Sticky sidebar --- */
+.sidebar--sticky {
+    position: sticky;
+    top: 129px;
+}
+
+/* --- Changelog sidebar blocks (moved into sidebar via JS) --- */
+.changelog-types-sidebar {
+    display: grid;
+    gap: 14px;
+}
+
+.changelog-versions .container-section-body {
+    max-height: 320px;
+    overflow-y: auto;
 }
 
 .page-document .site-footer {
@@ -1052,28 +1006,14 @@ select:focus {
     background: var(--tertiary);
     border: 1px solid var(--border);
     border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .panel--padded {
     padding: 20px 24px;
     margin-bottom: 16px;
-}
-
-.panel--padded h2 {
-    font-size: var(--type-h3);
-    margin-bottom: 8px;
-}
-
-.panel--padded h3 {
-    font-size: var(--type-h4);
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-}
-
-.panel--padded h4 {
-    font-size: var(--type-body);
-    margin-top: 6px;
 }
 
 /* --- Chips (color-pair badges) --- */
@@ -1138,33 +1078,21 @@ select:focus {
 }
 
 .list > li {
+    padding-left: 0;
+}
+
+.list > li::before {
+    content: none;
+}
+
+.panel--padded .list > li {
     padding: 14px 0;
     border-top: 1px solid var(--border);
 }
 
-.list > li:first-child {
+.panel--padded .list > li:first-child {
     border-top: 0;
     padding-top: 0;
-}
-
-.container-content .container-actions {
-    margin-top: 0;
-    margin-bottom: 4px;
-}
-
-.container-content h4 {
-    margin-bottom: 6px;
-}
-
-.container-content ul {
-    margin-top: 6px;
-    padding-left: 20px;
-    color: var(--body);
-    font-size: var(--type-subtitle);
-}
-
-.container-content ul li {
-    margin-bottom: 3px;
 }
 
 /* --- Changelog loading state --- */
