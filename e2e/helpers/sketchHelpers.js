@@ -30,6 +30,15 @@ export async function openSketch(page) {
   // on the viewport. Set a large viewport so all test coordinates fit.
   await page.setViewportSize({ width: 1600, height: 1400 });
 
+  // The SolveSpace WASM solver now loads lazily (off the critical path)
+  // instead of blocking page boot. Wait for it to be ready before clicking
+  // anything, otherwise the boot overlay will intercept the click.
+  await page.waitForFunction(
+    () => window.__knitstitchSketchService?._slvsAdapter?.ready === true,
+    null,
+    { timeout: 120000 },
+  );
+
   await page.getByRole('button', { name: 'Sketch' }).click();
   await page.getByRole('button', { name: 'Line' }).click();
 
@@ -67,19 +76,6 @@ export async function openSketch(page) {
       scale,
     };
   });
-
-  // The SolveSpace WASM solver now loads lazily (off the critical path)
-  // instead of blocking page boot, so real users get an interactive page
-  // immediately. It normally finishes loading well before a human reaches
-  // a constraint/dimension/drag interaction, but automated tests click
-  // through the same steps in milliseconds, so wait for it here once per
-  // test to keep constraint-dependent assertions deterministic.
-  await page.evaluate(() => window.__knitstitchSketchService?.ensureSolver());
-  await page.waitForFunction(
-    () => window.__knitstitchSketchService?._slvsAdapter?.ready === true,
-    null,
-    { timeout: 30000 },
-  );
 
   return box;
 }

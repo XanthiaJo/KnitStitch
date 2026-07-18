@@ -13,6 +13,10 @@ test.describe('Sketch constraints — anchor behavior', () => {
     await clickStage(page, box, { x: 80, y: 0 });
     await clickStage(page, box, { x: 80, y: 80 });
 
+    // Switch to Select so drags are handled by the drag handler (startDrag
+    // only runs when the active tool is Select).
+    await page.getByRole('button', { name: 'Select' }).click();
+
     // 1. Origin anchor cannot be dragged.
     await dragStage(page, box, { x: 0, y: 0 }, { x: 50, y: 50 });
     const origin = await page.evaluate(() => {
@@ -38,14 +42,14 @@ test.describe('Sketch constraints — anchor behavior', () => {
     // Click the midpoint of the vertical line and drag it right.
     const before = await page.evaluate(() => {
       const line = window.__knitstitchStore?.state?.sketch?.lines?.find((l) => l.id === 1);
-      return line ? { start: { x: l.start.x, y: l.start.y }, end: { x: l.end.x, y: l.end.y } } : null;
+      return line ? { start: { x: line.start.x, y: line.start.y }, end: { x: line.end.x, y: line.end.y } } : null;
     });
     expect(before).not.toBeNull();
 
     await dragStage(page, box, { x: 80, y: 40 }, { x: 100, y: 40 });
     const after = await page.evaluate(() => {
       const line = window.__knitstitchStore?.state?.sketch?.lines?.find((l) => l.id === 1);
-      return line ? { start: { x: l.start.x, y: l.start.y }, end: { x: l.end.x, y: l.end.y } } : null;
+      return line ? { start: { x: line.start.x, y: line.start.y }, end: { x: line.end.x, y: line.end.y } } : null;
     });
     expect(after).not.toBeNull();
 
