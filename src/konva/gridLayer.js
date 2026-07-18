@@ -136,15 +136,32 @@ export class GridLayer {
    */
   _getSketchFilled() {
     const lines = this.store.get('sketch.lines');
+    const beziers = this.store.get('sketch.beziers') || [];
+    // Flatten Béziers into line segments so they participate in closed-shape
+    // detection and cell-fill calculations alongside regular sketch lines.
+    const bezierSegments = [];
+    for (const b of beziers) {
+      const { start, control1, control2, end } = b;
+      const segs = 24;
+      let prevX = start.x, prevY = start.y;
+      for (let i = 1; i <= segs; i++) {
+        const t = i / segs;
+        const mt = 1 - t;
+        const x = mt * mt * mt * start.x + 3 * mt * mt * t * control1.x + 3 * mt * t * t * control2.x + t * t * t * end.x;
+        const y = mt * mt * mt * start.y + 3 * mt * mt * t * control1.y + 3 * mt * t * t * control2.y + t * t * t * end.y;
+        bezierSegments.push({ start: { x: prevX, y: prevY }, end: { x, y }, isConstruction: false });
+        prevX = x;
+        prevY = y;
+      }
+    }
+    const allLines = [...(lines || []), ...bezierSegments];
     // Use line count + a fingerprint of line endpoints so that moving
     // a point (without adding/removing lines) invalidates the cache.
     const fillThreshold = this.store.get('fillThreshold');
     let key = `threshold:${fillThreshold}`;
-    if (lines && lines.length > 0) {
-      let h = lines.length;
-      for (const l of lines) {
-        const startKey = `${Math.round(l.start.x)},${Math.round(l.start.y)}`;
-        const endKey = `${Math.round(l.end.x)},${Math.round(l.end.y)}`;
+    if (allLines.length > 0) {
+      let h = allLines.length;
+      for (const l of allLines) {
         h = h * 31 + (Math.round(l.start.x) + Math.round(l.start.y) * 7 + Math.round(l.end.x) * 13 + Math.round(l.end.y) * 17);
       }
       key = String(h);
@@ -152,8 +169,7 @@ export class GridLayer {
     if (this._sketchFilledKey !== key || this._sketchFilledCache === null) {
       const cellW = this.store.get('cellWidthPx');
       const cellH = this.store.get('cellHeightPx');
-      // Use the user-configured percentage for sketch-derived fills.
-      this._sketchFilledCache = computeFilledCellsFromSketch(lines, cellW, cellH, this.store.get('fillThreshold'));
+      this._sketchFilledCache = computeFilledCellsFromSketch(allLines, cellW, cellH, this.store.get('fillThreshold'));
       this._sketchFilledKey = key;
     }
     return this._sketchFilledCache;
