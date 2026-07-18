@@ -19,3 +19,10 @@ server-backed pattern storage. The planned account system will add a
 self-hosted Node/TypeScript API using Better Auth, preferably behind the same
 origin under `/api`. See the [roadmap](docs/roadmap.md#accounts-and-saved-patterns)
 for the planned authentication, authorization, and saved-pattern work.
+
+## Acknowledgements
+
+- [Devin](https://devin.ai) by Cognition — AI coding agent used throughout development
+- [Codex](https://openai.com/index/codex/) — AI coding assistance
+- [SolveSpace](https://solvespace.com/) — constraint solver, compiled to WebAssembly for the in-browser sketch constraint system (see `public/wasm/`)
+- [Better Auth](https://www.better-auth.com/) — planned authentication backend for the future account and saved-pattern system (to be implemented)
