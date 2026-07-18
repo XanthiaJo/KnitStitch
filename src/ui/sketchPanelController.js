@@ -1,5 +1,7 @@
 import { SketchTool } from '../services/sketch/sketchService.js';
 import { collectRefs, bindIfPresent, toggleActive } from './uiUtils.js';
+import { computeFilledCellsFromSketch } from '../services/sketch/fill/closedShapeFill.js';
+import { buildRowInstructions } from '../services/rowCountService.js';
 
 const REF_IDS = {
   sketchColorSelect: 'sketch-color',
@@ -219,12 +221,49 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
     sketchService.constraintSubMode = 'Coincident';
   });
 
+  function updateRowCountsSidebar() {
+    const filledCells = store.state.filledCells || new Set();
+    const sketch = store.state.sketch;
+    const sketchFilled = computeFilledCellsFromSketch(
+      sketch.lines,
+      store.state.cellWidthPx,
+      store.state.cellHeightPx,
+      store.state.fillThreshold,
+    );
+    const allFilled = new Set(filledCells);
+    for (const key of sketchFilled) allFilled.add(key);
+
+    const list = documentObj.getElementById('row-counts-list');
+    const empty = documentObj.getElementById('row-counts-empty');
+    if (!list) return;
+    if (allFilled.size === 0) {
+      list.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    const rows = buildRowInstructions(allFilled);
+    list.innerHTML = rows.map(({ row, stitches, instruction }) =>
+      `<li><span class="row-label">Row ${row}</span>`
+      + `<span class="row-instruction">${instruction}</span>`
+      + `<span class="row-count">${stitches} stitch${stitches === 1 ? '' : 'es'}</span></li>`
+    ).join('');
+  }
+
   // Store subscription
   store.subscribe((path) => {
     if (path.startsWith('sketch.')) {
       updateSketchSidebar();
     }
+    if (path === 'filledCells' || path === 'sketch.lines' || path === 'cellWidthPx' || path === 'cellHeightPx' || path === 'fillThreshold') {
+      updateRowCountsSidebar();
+    }
   });
+
+  // Initial population
+  updateSketchSidebar();
+  updateRowCountsSidebar();
 
   return { updateSketchSidebar };
 }

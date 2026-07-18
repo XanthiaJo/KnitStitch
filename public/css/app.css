@@ -817,6 +817,14 @@ select:focus {
     overflow-y: auto;
 }
 
+#panel-row-counts {
+    overflow-y: visible !important;
+}
+
+#panel-row-counts .container-section-body {
+    overflow: visible !important;
+}
+
 .workspace-panel.active {
     align-content: start;
 }
@@ -849,6 +857,62 @@ select:focus {
     background: var(--color-pair-gold-bg);
     color: var(--primary-dark);
     font-weight: 600;
+}
+
+/* Row counts panel full height */
+#panel-row-counts {
+    display: none !important;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+
+#panel-row-counts.active {
+    display: flex !important;
+}
+
+#panel-row-counts .container-section--headed {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#panel-row-counts .container-section-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Row counts override for stacked layout */
+#panel-row-counts #row-counts-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#panel-row-counts #row-counts-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+#panel-row-counts #row-counts-list .row-label {
+    font-weight: 600;
+}
+
+#panel-row-counts #row-counts-list .row-count {
+    font-size: 11px;
+    color: var(--body-light);
+}
+
+#panel-row-counts #row-counts-list .row-instruction {
+    font-size: 11px;
+    color: var(--body);
 }
 
 /* Dimension edit overlay */

@@ -14,6 +14,11 @@
           <label>Rows:</label>
           <input type="number" id="gauge-rows" value="28">
         </div>
+        <div class="form-row">
+          <label>Fill threshold:</label>
+          <input type="number" id="fill-threshold" value="30" min="0" max="100" step="1">
+          <span>%</span>
+        </div>
       </div>
     </div>
 
@@ -135,6 +140,18 @@
         <ul class="object-list" id="sketch-object-list">
         </ul>
         <button class="button button-sm" id="sketch-copy-objects" style="margin-top:8px;">Copy objects</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row Counts workspace sidebar -->
+  <div class="workspace-panel" id="panel-row-counts">
+    <div class="container-section--headed">
+      <div class="container-section-header">Row Counts</div>
+      <div class="container-section-body">
+        <ul class="object-list" id="row-counts-list">
+        </ul>
+        <p class="caption" id="row-counts-empty" style="display:none;">No filled cells yet.</p>
       </div>
     </div>
   </div>
