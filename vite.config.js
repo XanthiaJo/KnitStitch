@@ -84,6 +84,11 @@ export default {
   root: resolve(projectRoot, 'public/pages'),
   publicDir: resolve(projectRoot, 'public'),
   server: { fs: { allow: [projectRoot] } },
+  resolve: {
+    alias: {
+      '/src': resolve(projectRoot, 'src'),
+    },
+  },
   plugins: [htmlIncludes(), organisePages()],
   build: {
     outDir: resolve(projectRoot, 'dist'),

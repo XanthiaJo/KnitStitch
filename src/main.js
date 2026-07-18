@@ -17,6 +17,9 @@ persistence.hydrate();
 const sketchService = new SketchService(store);
 persistence.attach();
 
+// Rebuild sketch objects after hydration so the object list populates on load
+sketchService._rebuildObjects();
+
 if (typeof window !== 'undefined') {
   window.__knitstitchStore = store;
   window.__knitstitchSketchService = sketchService;
