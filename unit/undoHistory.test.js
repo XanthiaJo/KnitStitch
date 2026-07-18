@@ -7,6 +7,13 @@ function makeService() {
   const store = new Store();
   store.set('sketch.isActive', true);
   const service = new SketchService(store);
+  // Unit tests run in Node where the WASM solver cannot load, so provide a
+  // ready stub so constraint/dimension paths don't reject.
+  service._slvsAdapter = {
+    ready: true,
+    wouldOverconstrain: () => ({ wouldOverconstrain: false }),
+    solveAndWriteBack: () => ({ result: 0 }),
+  };
   service.activeTool = SketchTool.Line;
   return { store, service };
 }
