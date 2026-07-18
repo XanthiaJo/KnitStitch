@@ -21,7 +21,8 @@ export function setActiveTool(service, value) {
   // trigger it here too (ensureSolver() is idempotent) as a fallback in
   // case that hasn't started yet, so it's loading by the time the user
   // completes a constraint/dimension action.
-  if (value === SketchTool.Constraint || value === SketchTool.Dimension) {
+  if (value === SketchTool.Constraint || value === SketchTool.Dimension
+      || value === SketchTool.Rectangle || value === SketchTool.Circle) {
     service.ensureSolver();
   }
   service.cancelCurrentLine();

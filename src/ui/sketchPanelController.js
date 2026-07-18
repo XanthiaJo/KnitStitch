@@ -1,5 +1,4 @@
 import { SketchTool } from '../services/sketch/sketchService.js';
-import { analyzeDof } from '../services/sketch/solver/dofAnalyzer.js';
 import { collectRefs, bindIfPresent, toggleActive } from './uiUtils.js';
 
 const REF_IDS = {
@@ -13,11 +12,14 @@ const REF_IDS = {
   sketchConstraintStatus: 'sketch-constraint-status',
   toolLineBtn: 'tool-line',
   toolConstructionLineBtn: 'tool-construction-line',
+  toolCircleBtn: 'tool-circle',
+  toolRectangleBtn: 'tool-rectangle',
   toolSelectBtn: 'tool-select',
   toolAnchorBtn: 'tool-anchor',
   toolFillBtn: 'tool-fill',
   toolDimensionBtn: 'tool-dimension',
   toolPerpendicularBtn: 'tool-perpendicular',
+  toolParallelBtn: 'tool-parallel',
   toolHvBtn: 'tool-hv',
   toolMidpointBtn: 'tool-midpoint',
   toolEqualBtn: 'tool-equal',
@@ -29,10 +31,13 @@ const OBJECT_ICONS = {
   Point: '&#9679;',
   Anchor: '&#9632;',
   Perpendicular: '&#8869;',
+  Parallel: '&#8741;',
   Horizontal: '&#9472;',
   Vertical: '&#9474;',
   Equal: '&#8801;',
   Coincident: '&#9678;',
+  Circle: '&#9711;',
+  Rectangle: '&#9645;',
 };
 
 /**
@@ -52,6 +57,8 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
 
     toggleActive(refs.toolLineBtn, sketch.activeTool === SketchTool.Line);
     toggleActive(refs.toolConstructionLineBtn, sketch.activeTool === SketchTool.ConstructionLine);
+    toggleActive(refs.toolCircleBtn, sketch.activeTool === SketchTool.Circle);
+    toggleActive(refs.toolRectangleBtn, sketch.activeTool === SketchTool.Rectangle);
     toggleActive(refs.toolSelectBtn, sketch.activeTool === SketchTool.Select);
     toggleActive(refs.toolAnchorBtn, sketch.activeTool === SketchTool.Anchor);
     toggleActive(refs.toolFillBtn, sketch.activeTool === SketchTool.Fill);
@@ -59,6 +66,10 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
     toggleActive(
       refs.toolPerpendicularBtn,
       sketch.activeTool === SketchTool.Constraint && sketch.constraintSubMode === 'Perpendicular',
+    );
+    toggleActive(
+      refs.toolParallelBtn,
+      sketch.activeTool === SketchTool.Constraint && sketch.constraintSubMode === 'Parallel',
     );
     toggleActive(
       refs.toolHvBtn,
@@ -88,22 +99,23 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
     }
 
     if (refs.sketchConstraintStatus) {
-      const issues = sketchService.checkOverconstraints();
-      const dof = analyzeDof(store.state.sketch);
+      const analysis = sketchService._slvsAdapter?.ready
+        ? sketchService._slvsAdapter.analyze(store.state.sketch)
+        : { dof: 0, status: 'under', issues: [] };
       const parts = [];
 
       // DOF status
-      if (dof.status === 'over') {
+      if (analysis.status === 'over') {
         parts.push('Over-constrained');
-      } else if (dof.status === 'well') {
+      } else if (analysis.status === 'well') {
         parts.push('Fully constrained');
-      } else if (dof.dof > 0) {
-        parts.push(`${dof.dof} degree${dof.dof === 1 ? '' : 's'} of freedom remaining`);
+      } else if (analysis.dof > 0) {
+        parts.push(`${analysis.dof} degree${analysis.dof === 1 ? '' : 's'} of freedom remaining`);
       }
 
-      // Overconstraint checker messages
-      if (issues.length) {
-        parts.push(`${issues.length} overconstraint${issues.length === 1 ? '' : 's'}: ${issues.map((i) => i.message).join('; ')}`);
+      // Overconstraint messages from the solver's failed-constraint list
+      if (analysis.issues.length) {
+        parts.push(`${analysis.issues.length} overconstraint${analysis.issues.length === 1 ? '' : 's'}: ${analysis.issues.map((i) => i.message).join('; ')}`);
       }
 
       refs.sketchConstraintStatus.textContent = parts.join(' — ');
@@ -164,6 +176,12 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
   bindIfPresent(refs.toolConstructionLineBtn, 'click', () => {
     sketchService.activeTool = SketchTool.ConstructionLine;
   });
+  bindIfPresent(refs.toolCircleBtn, 'click', () => {
+    sketchService.activeTool = SketchTool.Circle;
+  });
+  bindIfPresent(refs.toolRectangleBtn, 'click', () => {
+    sketchService.activeTool = SketchTool.Rectangle;
+  });
   bindIfPresent(refs.toolSelectBtn, 'click', () => {
     sketchService.activeTool = SketchTool.Select;
   });
@@ -179,6 +197,10 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
   bindIfPresent(refs.toolPerpendicularBtn, 'click', () => {
     sketchService.activeTool = SketchTool.Constraint;
     sketchService.constraintSubMode = 'Perpendicular';
+  });
+  bindIfPresent(refs.toolParallelBtn, 'click', () => {
+    sketchService.activeTool = SketchTool.Constraint;
+    sketchService.constraintSubMode = 'Parallel';
   });
   bindIfPresent(refs.toolHvBtn, 'click', () => {
     sketchService.activeTool = SketchTool.Constraint;

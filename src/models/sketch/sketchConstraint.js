@@ -20,6 +20,9 @@ export class SketchConstraint {
     if (this.type === 'Perpendicular' && this.lineA && this.lineB) {
       return `Perpendicular L${this.lineA.id + 1} & L${this.lineB.id + 1}`;
     }
+    if (this.type === 'Parallel' && this.lineA && this.lineB) {
+      return `Parallel L${this.lineA.id + 1} & L${this.lineB.id + 1}`;
+    }
     if (this.type === 'Midpoint' && this.lineA && this.lineB && !this.pointA) {
       return `Midpoint L${this.lineA.id + 1} & L${this.lineB.id + 1}`;
     }

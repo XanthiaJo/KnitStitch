@@ -8,12 +8,15 @@ export const SketchTool = {
   Dimension: 'Dimension',
   Constraint: 'Constraint',
   Anchor: 'Anchor',
-  Fill: 'Fill'
+  Fill: 'Fill',
+  Circle: 'Circle',
+  Rectangle: 'Rectangle'
 };
 
 export const ConstraintSubMode = {
   None: 'None',
   Perpendicular: 'Perpendicular',
+  Parallel: 'Parallel',
   Midpoint: 'Midpoint',
   Equal: 'Equal',
   HorizontalVertical: 'HorizontalVertical',
@@ -27,9 +30,12 @@ export const SketchObjectKind = {
   Constraint: 'Constraint',
   Dimension: 'Dimension',
   Perpendicular: 'Perpendicular',
+  Parallel: 'Parallel',
   Midpoint: 'Midpoint',
   Equal: 'Equal',
   Horizontal: 'Horizontal',
   Vertical: 'Vertical',
   Anchor: 'Anchor',
+  Circle: 'Circle',
+  Rectangle: 'Rectangle',
 };

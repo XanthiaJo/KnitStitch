@@ -1,5 +1,4 @@
 import { SketchDimension } from '../../../models/sketch/sketchDimension.js';
-import { wouldOverconstrain } from '../solver/dofAnalyzer.js';
 import {
   rebuildSketchObjects,
   setSnapCandidate,
@@ -62,11 +61,15 @@ export class DimensionTool {
           ? value / dim.displayValue * (dim.drivenValue ?? this._measureDimPx(dim))
           : value;
 
+        if (!this.service._slvsAdapter?.ready) {
+          showCursorMessage(this.service, 'Solver is not ready yet', dim.labelPos);
+          this.store.set('sketch.pendingDimEdit', null);
+          return;
+        }
+
         // Check if driving this dimension would over-constrain the sketch
-        const overcheck = wouldOverconstrain(this.store.state.sketch, {
-          isDimension: true,
-          pointA: dim.a,
-          pointB: dim.b,
+        const overcheck = this.service._slvsAdapter.wouldOverconstrain(this.store.state.sketch, {
+          dimension: { a: dim.a, b: dim.b, drivenValue: targetPx, kind: dim.kind },
         });
         if (overcheck.wouldOverconstrain) {
           showCursorMessage(this.service, 'Over-constrained: this dimension would remove too many degrees of freedom', dim.labelPos);
@@ -77,7 +80,7 @@ export class DimensionTool {
         this._applyDimConstraint(dim, targetPx);
         if (hasDisplay) {
           dim.displayValue = value;
-          dim.recompute();
+          dim.recompute(true);
         }
         this.store.set('sketch.pendingDimEdit', null);
       },
@@ -95,6 +98,8 @@ export class DimensionTool {
   _measureDimPx(dim) {
     const dx = dim.b.x - dim.a.x;
     const dy = dim.b.y - dim.a.y;
+    if (dim.kind === 'Horizontal') return Math.abs(dx);
+    if (dim.kind === 'Vertical') return Math.abs(dy);
     return Math.sqrt(dx * dx + dy * dy);
   }
 
@@ -102,27 +107,11 @@ export class DimensionTool {
     this.service._recordSnapshot('Apply dimension constraint');
     const usageA = this._countLineUsage(dim.a);
     const usageB = this._countLineUsage(dim.b);
-    const free  = usageA < usageB ? dim.a : dim.b;
-    const fixed = usageA < usageB ? dim.b : dim.a;
-
-    if (dim.kind === 'Horizontal') {
-      const signX = Math.sign(free.x - fixed.x) || 1;
-      free.x = fixed.x + signX * targetPx;
-    } else if (dim.kind === 'Vertical') {
-      const signY = Math.sign(free.y - fixed.y) || 1;
-      free.y = fixed.y + signY * targetPx;
-    } else {
-      const dx = free.x - fixed.x;
-      const dy = free.y - fixed.y;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      if (len >= 0.001) {
-        free.x = fixed.x + (dx / len) * targetPx;
-        free.y = fixed.y + (dy / len) * targetPx;
-      }
-    }
+    const free = usageA < usageB ? dim.a : dim.b;
 
     dim.setDrivenValue(targetPx);
-    this.service._reconvergeConstraints();
+    this.service._reconvergeConstraints(new Set([free]));
+    dim.recompute(true);
     for (const d of this.store.state.sketch.dimensions) {
       if (!Object.is(d, dim) && (Object.is(d.a, free) || Object.is(d.b, free)))
         d.recompute();

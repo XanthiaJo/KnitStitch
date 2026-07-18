@@ -221,8 +221,57 @@ function renderCoincidentIcon(group, constraint, service) {
   group.add(iconGroup);
 }
 
+function renderParallelIcon(group, constraint, service) {
+  const line = constraint.lineA;
+  if (!line) return;
+
+  const midX = (line.start.x + line.end.x) / 2;
+  const midY = (line.start.y + line.end.y) / 2;
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.001) return;
+
+  // Unit direction along the line, and perpendicular offset for the two ticks
+  const ux = dx / len;
+  const uy = dy / len;
+  const nx = -uy;
+  const ny = ux;
+  const color = iconColor(constraint);
+  const tickHalf = 5;   // half-length of each tick along the line direction
+  const gap = 3;        // perpendicular offset of each tick from the midpoint
+
+  const iconGroup = new Konva.Group({ listening: true });
+  // Two short parallel ticks, offset on either side of the midpoint
+  for (const sign of [-1, 1]) {
+    const cx = midX + nx * gap * sign;
+    const cy = midY + ny * gap * sign;
+    iconGroup.add(new Konva.Line({
+      points: [
+        cx - ux * tickHalf, cy - uy * tickHalf,
+        cx + ux * tickHalf, cy + uy * tickHalf,
+      ],
+      stroke: color,
+      strokeWidth: 2,
+      lineCap: 'round',
+      listening: true,
+      hitStrokeWidth: 18,
+    }));
+  }
+  iconGroup.add(new Konva.Circle({
+    x: midX,
+    y: midY,
+    radius: 10,
+    fill: 'rgba(0,0,0,0)',
+    listening: true,
+  }));
+  attachConstraintClick(iconGroup, constraint, service);
+  group.add(iconGroup);
+}
+
 const REGISTRY = {
   Perpendicular: renderPerpendicularIcon,
+  Parallel: renderParallelIcon,
   Midpoint: renderMidpointIcon,
   Equal: renderEqualIcon,
   Horizontal: renderHorizontalIcon,

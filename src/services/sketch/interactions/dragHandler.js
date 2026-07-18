@@ -2,12 +2,17 @@ import { nearestLine } from '../../../utils/geometry.js';
 
 export function startDrag(service, position, modifiers = {}) {
     const nearPoint = service._findNearestPoint(position, modifiers.snapEnabled !== false);
-    if (nearPoint && !nearPoint.isAnchor) {
-      service._dragPoint = nearPoint;
-      service._dragLine = null;
-      service._dragLineStartPos = null;
-      service.selectPoint(nearPoint);
-      service._history.beginDrag();
+    if (nearPoint) {
+      // A point was found under the cursor. If it's an anchor, don't drag
+      // it (and don't fall through to line-dragging either — clicking a
+      // fixed point and dragging should do nothing, matching Fusion 360).
+      if (!nearPoint.isAnchor) {
+        service._dragPoint = nearPoint;
+        service._dragLine = null;
+        service._dragLineStartPos = null;
+        service.selectPoint(nearPoint);
+        service._history.beginDrag();
+      }
       return;
     }
 

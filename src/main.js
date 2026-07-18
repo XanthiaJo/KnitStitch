@@ -49,5 +49,5 @@ if (typeof document !== 'undefined') {
     bootOverlay.classList.add('is-hidden');
     bootOverlay.addEventListener('transitionend', () => bootOverlay.remove(), { once: true });
   };
-  hideBootOverlay();
+  sketchService.ensureSolver().finally(hideBootOverlay);
 }

@@ -14,7 +14,11 @@ import { nearestLine, nearestPoint } from '../utils/geometry.js';
 const RENDER_TRIGGERS = new Set([
   'sketch.lines',
   'sketch.points',
+  'sketch.circles',
+  'sketch.rectangles',
   'sketch.previewLine',
+  'sketch.previewCircle',
+  'sketch.previewRectangle',
   'sketch.snapCandidate',
   'sketch.strokeColor',
   'sketch.strokeThickness',
@@ -88,6 +92,10 @@ export class SketchLayer {
         this.service.onLineClick(target.line, pos, { snapEnabled: !e.evt.ctrlKey, multiSelect: e.evt.ctrlKey });
         return;
       }
+      if (target?.circle) {
+        this.service.selectCircle(target.circle, e.evt.ctrlKey);
+        return;
+      }
       this.service.onCanvasClick(pos, { snapEnabled: !e.evt.ctrlKey });
     });
 
@@ -143,8 +151,26 @@ export class SketchLayer {
     if (point) return { point };
     const constraint = this._findConstraint(position, sketch.constraints);
     if (constraint) return { constraint };
+    const circle = this._findCircle(position, sketch.circles);
+    if (circle) return { circle };
     const line = nearestLine(sketch.lines, position, 10);
     return line ? { line } : null;
+  }
+
+  _findCircle(position, circles = []) {
+    let best = null;
+    let bestDist = 10;
+    for (const c of circles) {
+      const dx = position.x - c.center.x;
+      const dy = position.y - c.center.y;
+      const distToCenter = Math.sqrt(dx * dx + dy * dy);
+      const distToCircumference = Math.abs(distToCenter - c.radius);
+      if (distToCircumference < bestDist) {
+        bestDist = distToCircumference;
+        best = c;
+      }
+    }
+    return best ?? null;
   }
 
   _findDimension(position, dimensions = []) {
@@ -186,9 +212,12 @@ export class SketchLayer {
 
     const lines = this.store.get('sketch.lines');
     const points = this.store.get('sketch.points');
+    const circles = this.store.get('sketch.circles') || [];
     const dimensions = this.store.get('sketch.dimensions') || [];
     const constraints = this.store.get('sketch.constraints') || [];
     const preview = this.store.get('sketch.previewLine');
+    const previewCircle = this.store.get('sketch.previewCircle');
+    const previewRect = this.store.get('sketch.previewRectangle');
     const snap = this.store.get('sketch.snapCandidate');
     const color = this.store.get('sketch.strokeColor') || DEFAULT_STROKE_COLOR;
     const triplet = getColorTriplet(color);
@@ -216,6 +245,24 @@ export class SketchLayer {
         });
       });
       group.add(kLine);
+    }
+
+    // Committed circles
+    for (const circle of circles) {
+      const kCircle = new Konva.Circle({
+        x: circle.center.x,
+        y: circle.center.y,
+        radius: circle.radius,
+        stroke: circle.isSelected ? triplet.select : color,
+        strokeWidth: circle.isSelected ? thickness + 1 : thickness,
+        listening: true,
+        hitStrokeWidth: Math.max(10, thickness + 4),
+      });
+      kCircle.on('click tap', (e) => {
+        e.cancelBubble = true;
+        this.service.selectCircle(circle, e.evt.ctrlKey);
+      });
+      group.add(kCircle);
     }
 
     const pointDisplayColor = triplet.select;
@@ -305,6 +352,36 @@ export class SketchLayer {
         listening: false,
       });
       group.add(kPreview);
+    }
+
+    // Preview circle (shown while drawing a circle — center set, radius live)
+    if (isActive && previewCircle) {
+      const kPreviewCircle = new Konva.Circle({
+        x: previewCircle.center.x,
+        y: previewCircle.center.y,
+        radius: previewCircle.radius,
+        stroke: PREVIEW_COLOR,
+        strokeWidth: thickness,
+        dash: [5, 5],
+        listening: false,
+      });
+      group.add(kPreviewCircle);
+    }
+
+    // Preview rectangle (shown while drawing a rectangle — center set, corner live)
+    if (isActive && previewRect) {
+      const { cx, cy, halfW, halfH } = previewRect;
+      const kPreviewRect = new Konva.Rect({
+        x: cx - halfW,
+        y: cy - halfH,
+        width: halfW * 2,
+        height: halfH * 2,
+        stroke: PREVIEW_COLOR,
+        strokeWidth: thickness,
+        dash: [5, 5],
+        listening: false,
+      });
+      group.add(kPreviewRect);
     }
 
     // Snap candidate highlight (only shown when sketch input is active)

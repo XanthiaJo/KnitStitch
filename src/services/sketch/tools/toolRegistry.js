@@ -3,6 +3,8 @@ import { AnchorTool } from './anchorTool.js';
 import { ConstraintTool } from './constraintTool.js';
 import { DimensionTool } from './dimensionTool.js';
 import { LineTool } from './lineTool.js';
+import { CircleTool } from './circleTool.js';
+import { RectangleTool } from './rectangleTool.js';
 import { TemplateTool } from '../templates/templateTool.js';
 
 /**
@@ -17,6 +19,8 @@ export class ToolRegistry {
     this._dimensionTool = new DimensionTool(service);
     this._constraintTool = new ConstraintTool(service);
     this._anchorTool = new AnchorTool(service);
+    this._circleTool = new CircleTool(service);
+    this._rectangleTool = new RectangleTool(service);
     this.templateTool = new TemplateTool(service);
 
     this._tools = new Map([
@@ -25,6 +29,8 @@ export class ToolRegistry {
       [SketchTool.Dimension, this._dimensionTool],
       [SketchTool.Constraint, this._constraintTool],
       [SketchTool.Anchor, this._anchorTool],
+      [SketchTool.Circle, this._circleTool],
+      [SketchTool.Rectangle, this._rectangleTool],
     ]);
   }
 
@@ -48,7 +54,6 @@ export class ToolRegistry {
         this._lineTool.onLineClick(position, modifiers);
         break;
       case SketchTool.Dimension:
-        console.log('TR Dimension', this._dimensionTool);
         this._dimensionTool.onDimensionClick(position, modifiers);
         break;
       case SketchTool.Constraint:
@@ -56,6 +61,12 @@ export class ToolRegistry {
         break;
       case SketchTool.Anchor:
         this._anchorTool.onClick(position, modifiers);
+        break;
+      case SketchTool.Circle:
+        this._circleTool.onCircleClick(position, modifiers);
+        break;
+      case SketchTool.Rectangle:
+        this._rectangleTool.onRectangleClick(position, modifiers);
         break;
     }
   }
@@ -79,6 +90,12 @@ export class ToolRegistry {
         break;
       case SketchTool.Anchor:
         this._anchorTool.onMouseMove(position, modifiers);
+        break;
+      case SketchTool.Circle:
+        this._circleTool.onCircleMouseMove(position, modifiers);
+        break;
+      case SketchTool.Rectangle:
+        this._rectangleTool.onRectangleMouseMove(position, modifiers);
         break;
     }
   }

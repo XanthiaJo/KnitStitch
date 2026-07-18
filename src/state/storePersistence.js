@@ -4,6 +4,8 @@ import { SketchPoint } from '../models/sketch/sketchPoint.js';
 import { SketchLine } from '../models/sketch/sketchLine.js';
 import { SketchDimension } from '../models/sketch/sketchDimension.js';
 import { SketchConstraint } from '../models/sketch/sketchConstraint.js';
+import { SketchCircle } from '../models/sketch/sketchCircle.js';
+import { SketchRectangle } from '../models/sketch/sketchRectangle.js';
 
 const STORAGE_KEY = 'knitstitch_state';
 const DEBOUNCE_MS = 300;
@@ -27,6 +29,8 @@ const PERSISTED_PATHS = new Set([
   'sketch.points',
   'sketch.dimensions',
   'sketch.constraints',
+  'sketch.circles',
+  'sketch.rectangles',
 ]);
 
 // Top-level sketch keys that are saved (used during hydration)
@@ -37,6 +41,8 @@ const PERSISTED_SKETCH_KEYS = new Set([
   'points',
   'dimensions',
   'constraints',
+  'circles',
+  'rectangles',
 ]);
 
 export class StorePersistence {
@@ -150,6 +156,8 @@ export class StorePersistence {
         points: sketch.points,
         dimensions: sketch.dimensions,
         constraints: sketch.constraints,
+        circles: sketch.circles || [],
+        rectangles: sketch.rectangles || [],
       },
     };
 
@@ -222,6 +230,30 @@ export class StorePersistence {
       constraint.isSelected = !!raw.isSelected;
       return constraint;
     });
+    const constraintById = new Map(constraints.map((c) => [c.id, c]));
+
+    // Circles
+    const rawCircles = Array.isArray(savedSketch.circles) ? savedSketch.circles : [];
+    const circles = rawCircles.map((raw) => {
+      const center = pointById.get(raw.center?.id)
+        ?? new SketchPoint(raw.center?.id ?? 0, raw.center?.x ?? 0, raw.center?.y ?? 0);
+      const circle = new SketchCircle(raw.id ?? 0, center, raw.radius ?? 0);
+      circle.isSelected = !!raw.isSelected;
+      return circle;
+    });
+
+    // Rectangles — reconnect to restored points, lines, and constraints
+    const rawRectangles = Array.isArray(savedSketch.rectangles) ? savedSketch.rectangles : [];
+    const rectangles = rawRectangles.map((raw) => {
+      const center = raw.center?.id != null ? pointById.get(raw.center.id) ?? null : null;
+      const corners = (raw.corners || []).map((c) => pointById.get(c.id)).filter(Boolean);
+      const edges = (raw.edges || []).map((l) => lineById.get(l.id)).filter(Boolean);
+      const constructionLines = (raw.constructionLines || []).map((l) => lineById.get(l.id)).filter(Boolean);
+      const rectConstraints = (raw.constraints || []).map((c) => constraintById.get(c.id)).filter(Boolean);
+      const rect = new SketchRectangle(raw.id ?? 0, center, corners, edges, constructionLines, rectConstraints);
+      rect.isSelected = !!raw.isSelected;
+      return rect;
+    });
 
     return {
       ...savedSketch,
@@ -229,6 +261,8 @@ export class StorePersistence {
       lines,
       dimensions,
       constraints,
+      circles,
+      rectangles,
     };
   }
 }

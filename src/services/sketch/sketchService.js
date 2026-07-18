@@ -2,7 +2,6 @@ import { STROKE_COLOR_OPTIONS } from './render/styleOptions.js';
 import { SlvsAdapter } from './solver/slvsAdapter.js';
 import { ToolRegistry } from './tools/toolRegistry.js';
 import { HistoryManager } from './state/historyManager.js';
-import { checkOverconstraints } from './solver/overconstraintChecker.js';
 import { nearestPoint, findSharedPoint } from '../../utils/geometry.js';
 import { ConstraintSubMode, SNAP_RADIUS, SketchObjectKind, SketchTool } from './constants.js';
 import { removeOrphanPoint } from './state/sketchCleanup.js';
@@ -10,7 +9,7 @@ import { syncSketchStateToStore, rebuildSketchObjects, flushSketchArrays, setPre
 import { seedIdCountersFromSketch, assignConstraintIds } from './state/sketchIdManager.js';
 import { startDrag, onCanvasMouseUp, onSelectMouseMove } from './interactions/dragHandler.js';
 import { ensureOriginAnchor, undo, clear, cancelCurrentLine, recordSnapshot, exitToSelect } from './state/lifecycle.js';
-import { clearSelection, selectPoint, selectLine, selectDimension, selectConstraint, selectObjectByRef } from './state/sketchSelection.js';
+import { clearSelection, selectPoint, selectLine, selectDimension, selectConstraint, selectCircle, selectRectangle, selectObjectByRef } from './state/sketchSelection.js';
 import { deleteSelected, getHasSelection } from './state/selection.js';
 import { getIsActive, setIsActive, getActiveTool, setActiveTool, getConstraintSubMode, setConstraintSubMode, getStrokeColor, setStrokeColor, getStrokeThickness, setStrokeThickness, getPendingStart, setPendingStart, getTemplates } from './state/properties.js';
 import { applyTemplate, regenerateTemplate } from './templates/templateActions.js';
@@ -24,6 +23,8 @@ export class SketchService {
     this._nextLineId = 0;
     this._nextDimId = 0;
     this._nextConstraintId = 0;
+    this._nextCircleId = 0;
+    this._nextRectangleId = 0;
     this._dimPendingA = null;
     this._constraintPendingLine = null;
     this._constraintPendingPoint = null;
@@ -65,6 +66,14 @@ export class SketchService {
 
   get _anchorTool() {
     return this._toolRegistry.getTool(SketchTool.Anchor);
+  }
+
+  get _circleTool() {
+    return this._toolRegistry.getTool(SketchTool.Circle);
+  }
+
+  get _rectangleTool() {
+    return this._toolRegistry.getTool(SketchTool.Rectangle);
   }
 
   get _templateTool() {
@@ -157,6 +166,14 @@ export class SketchService {
 
   selectConstraint(constraint, multiSelect = false) {
     return selectConstraint(this, constraint, multiSelect);
+  }
+
+  selectCircle(circle, multiSelect = false) {
+    return selectCircle(this, circle, multiSelect);
+  }
+
+  selectRectangle(rect, multiSelect = false) {
+    return selectRectangle(this, rect, multiSelect);
   }
 
   selectObjectByRef(refType, refId, multiSelect = false) {
@@ -366,9 +383,5 @@ export class SketchService {
 
   _openDimEdit(dim) {
     this._dimensionTool.openDimEdit(dim);
-  }
-
-  checkOverconstraints() {
-    return checkOverconstraints(this.store.state.sketch);
   }
 }

@@ -4,7 +4,7 @@ export function deleteSelected(service, ) {
     if (!service.hasSelection) return;
     service._recordSnapshot('Delete selection');
     const sketch = service.store.state.sketch;
-    const { dimsToRemove, linesToRemove } = deleteSketchSelection({
+    const { dimsToRemove, linesToRemove, removedPoints } = deleteSketchSelection({
       sketch,
       selectedLines: service._selectedLines,
       selectedPoints: service._selectedPoints,
@@ -21,6 +21,12 @@ export function deleteSelected(service, ) {
       service._removeOrphanPoint(dim.a);
       service._removeOrphanPoint(dim.b);
     }
+    // Remove orphaned points from rectangle/circle deletion that weren't
+    // already caught by the line-endpoint cleanup above (e.g. circle centers,
+    // rectangle centers that are only connected via midpoint constraints).
+    for (const point of removedPoints) {
+      service._removeOrphanPoint(point);
+    }
 
     service._selectedPoints.clear();
     service._selectedLines.clear();
@@ -33,5 +39,7 @@ export function getHasSelection(service) {
     return service._selectedPoints.size > 0
       || service._selectedLines.size > 0
       || sketch.dimensions.some((d) => d.isSelected)
-      || sketch.constraints.some((c) => c?.isSelected);
+      || sketch.constraints.some((c) => c?.isSelected)
+      || (sketch.circles || []).some((c) => c.isSelected)
+      || (sketch.rectangles || []).some((r) => r.isSelected);
 }

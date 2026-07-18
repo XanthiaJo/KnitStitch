@@ -17,8 +17,11 @@ export class SlvsAdapter {
     this.slvs = null;
     this.g = 1;
     this.wp = null;
+    this.normal2d = null;          // shared 2D normal for circles
     this.pointHandles = new Map(); // pointId → slvs Entity
     this.lineHandles = new Map();  // lineId  → slvs Entity
+    this.circleHandles = new Map(); // circleId → { circle, radius } slvs Entities
+    this.handleToObject = new Map(); // Slvs_Constraint.h → sketch object info
     this.ready = false;
   }
 
@@ -31,6 +34,7 @@ export class SlvsAdapter {
     }
     this.slvs = await globalThis.solvespace();
     this.wp = this.slvs.addBase2D(this.g);
+    this.normal2d = this.slvs.addNormal2D(this.g, this.wp);
     this.ready = true;
   }
 
@@ -81,11 +85,14 @@ export class SlvsAdapter {
 
   // ── Sync from sketch ─────────────────────────────────────────────
 
-  syncFromSketch(sketch) {
+  syncFromSketch(sketch, options = {}) {
     this.slvs.clearSketch();
     this.pointHandles.clear();
     this.lineHandles.clear();
+    this.circleHandles.clear();
+    this.handleToObject.clear();
     this.wp = this.slvs.addBase2D(this.g);
+    this.normal2d = this.slvs.addNormal2D(this.g, this.wp);
 
     // Points → slvs.addPoint2D, converted px → solver-units (uniform scale)
     for (const p of sketch.points) {
@@ -114,20 +121,100 @@ export class SlvsAdapter {
       this.lineHandles.set(l.id, h);
     }
 
-    // Constraints → mapped per type
-    for (const c of sketch.constraints) {
-      this._addConstraint(c);
+    // Circles → slvs.addCircle (needs a normal + distance entity for radius)
+    for (const c of sketch.circles || []) {
+      const centerH = this.pointHandles.get(c.center.id);
+      if (!centerH || !this.normal2d) continue;
+      const radiusH = this.slvs.addDistance(this.g, this.pxToSolver(c.radius), this.wp);
+      const circleH = this.slvs.addCircle(this.g, this.normal2d, centerH, radiusH, this.wp);
+      this.circleHandles.set(c.id, { circle: circleH, radius: radiusH });
     }
 
-    // Driving dimensions → slvs.distance (only if isConstrained)
+    // Constraints → mapped per type
+    for (const c of sketch.constraints) {
+      const handles = this._addConstraint(c);
+      if (handles && c.id != null) {
+        for (const h of handles) {
+          this.handleToObject.set(h.h, { kind: 'constraint', id: c.id, obj: c });
+        }
+      }
+    }
+
+    if (options.proposedConstraint) {
+      this._addConstraint(options.proposedConstraint);
+    }
+
+    // Solver-only X and Y axis lines for projected distance constraints
+    this._addAxisEntities(sketch);
+
+    // Driving dimensions
     for (const d of sketch.dimensions) {
       if (!d.isConstrained) continue;
-      const aH = this.pointHandles.get(d.a.id);
-      const bH = this.pointHandles.get(d.b.id);
-      if (!aH || !bH) continue;
-      const solverUnits = this.pxToSolver(d.drivenValue);
-      this.slvs.distance(this.g, aH, bH, solverUnits, this.wp);
+      const h = this._addDimensionConstraint(d, true);
+      if (h && d.id != null) {
+        this.handleToObject.set(h.h, { kind: 'dimension', id: d.id, obj: d });
+      }
     }
+
+    if (options.proposedDimension) {
+      this._addDimensionConstraint(options.proposedDimension, false);
+    }
+  }
+
+  _addAxisEntities(sketch) {
+    const slvs = this.slvs;
+    const g = this.g;
+    const wp = this.wp;
+
+    // Prefer the sketch origin; fall back to a solver-only origin if absent.
+    const originPoint = sketch.points.find((p) => p.isOrigin);
+    const originH = originPoint
+      ? this.pointHandles.get(originPoint.id)
+      : slvs.addPoint2D(g, 0, 0, wp);
+    if (!originPoint) slvs.dragged(g, originH, wp);
+
+    // X-axis: from origin to (1, 0) in the base workplane (unit direction is enough)
+    const xP = slvs.addPoint2D(g, 1, 0, wp);
+    slvs.dragged(g, xP, wp);
+    this.xAxisLine = slvs.addLine2D(g, originH, xP, wp);
+
+    // Y-axis: from origin to (0, 1)
+    const yP = slvs.addPoint2D(g, 0, 1, wp);
+    slvs.dragged(g, yP, wp);
+    this.yAxisLine = slvs.addLine2D(g, originH, yP, wp);
+  }
+
+  _addDimensionConstraint(d, storeHandle) {
+    const slvs = this.slvs;
+    const g = this.g;
+    const wp = this.wp;
+    const E_NONE = slvs.E_NONE;
+
+    const aH = this.pointHandles.get(d.a.id);
+    const bH = this.pointHandles.get(d.b.id);
+    if (!aH || !bH) return undefined;
+
+    const value = this.pxToSolver(d.drivenValue);
+    const kind = d.kind ?? 'Aligned';
+    let h;
+
+    if (kind === 'Horizontal') {
+      const sign = Math.sign(d.b.x - d.a.x) || 1;
+      h = slvs.addConstraint(
+        g, slvs.C_PROJ_PT_DISTANCE, wp, sign * value,
+        aH, bH, this.xAxisLine, E_NONE, E_NONE, E_NONE, false, false,
+      );
+    } else if (kind === 'Vertical') {
+      const sign = Math.sign(d.b.y - d.a.y) || 1;
+      h = slvs.addConstraint(
+        g, slvs.C_PROJ_PT_DISTANCE, wp, sign * value,
+        aH, bH, this.yAxisLine, E_NONE, E_NONE, E_NONE, false, false,
+      );
+    } else {
+      h = slvs.distance(g, aH, bH, value, wp);
+    }
+
+    return h;
   }
 
   _addConstraint(c) {
@@ -135,45 +222,54 @@ export class SlvsAdapter {
     const g = this.g;
     const wp = this.wp;
     const E_NONE = slvs.E_NONE;
+    const handles = [];
 
     switch (c.type) {
       case 'Coincident': {
         if (c.pointA && c.pointB) {
           const aH = this.pointHandles.get(c.pointA.id);
           const bH = this.pointHandles.get(c.pointB.id);
-          if (aH && bH) slvs.coincident(g, aH, bH, wp);
+          if (aH && bH) handles.push(slvs.coincident(g, aH, bH, wp));
         }
-        break;
+        return handles;
       }
       case 'Perpendicular': {
         if (c.lineA && c.lineB) {
           const aH = this.lineHandles.get(c.lineA.id);
           const bH = this.lineHandles.get(c.lineB.id);
-          if (aH && bH) slvs.perpendicular(g, aH, bH, wp, false);
+          if (aH && bH) handles.push(slvs.perpendicular(g, aH, bH, wp, false));
         }
-        break;
+        return handles;
+      }
+      case 'Parallel': {
+        if (c.lineA && c.lineB) {
+          const aH = this.lineHandles.get(c.lineA.id);
+          const bH = this.lineHandles.get(c.lineB.id);
+          if (aH && bH) handles.push(slvs.parallel(g, aH, bH, wp));
+        }
+        return handles;
       }
       case 'Equal': {
         if (c.lineA && c.lineB) {
           const aH = this.lineHandles.get(c.lineA.id);
           const bH = this.lineHandles.get(c.lineB.id);
-          if (aH && bH) slvs.equal(g, aH, bH, wp);
+          if (aH && bH) handles.push(slvs.equal(g, aH, bH, wp));
         }
-        break;
+        return handles;
       }
       case 'Horizontal': {
         if (c.lineA) {
           const aH = this.lineHandles.get(c.lineA.id);
-          if (aH) slvs.horizontal(g, aH, wp, E_NONE);
+          if (aH) handles.push(slvs.horizontal(g, aH, wp, E_NONE));
         }
-        break;
+        return handles;
       }
       case 'Vertical': {
         if (c.lineA) {
           const aH = this.lineHandles.get(c.lineA.id);
-          if (aH) slvs.vertical(g, aH, wp, E_NONE);
+          if (aH) handles.push(slvs.vertical(g, aH, wp, E_NONE));
         }
-        break;
+        return handles;
       }
       case 'Midpoint': {
         if (c.lineA && c.pointA) {
@@ -181,7 +277,7 @@ export class SlvsAdapter {
           const ptH = this.pointHandles.get(c.pointA.id);
           const lnH = this.lineHandles.get(c.lineA.id);
           if (ptH && lnH) {
-            slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, ptH, E_NONE, lnH, E_NONE, E_NONE, E_NONE, false, false);
+            handles.push(slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, ptH, E_NONE, lnH, E_NONE, E_NONE, E_NONE, false, false));
           }
         } else if (c.lineA && c.lineB) {
           // Line-line midpoint: the midpoints of the two lines must be
@@ -196,17 +292,17 @@ export class SlvsAdapter {
             const midA = slvs.addPoint2D(g, 0, 0, wp);
             const midB = slvs.addPoint2D(g, 0, 0, wp);
             // Constrain each helper point to be at its line's midpoint
-            slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, midA, E_NONE, lnAH, E_NONE, E_NONE, E_NONE, false, false);
-            slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, midB, E_NONE, lnBH, E_NONE, E_NONE, E_NONE, false, false);
+            handles.push(slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, midA, E_NONE, lnAH, E_NONE, E_NONE, E_NONE, false, false));
+            handles.push(slvs.addConstraint(g, slvs.C_AT_MIDPOINT, wp, 0, midB, E_NONE, lnBH, E_NONE, E_NONE, E_NONE, false, false));
             // Constrain the two midpoints to be coincident
-            slvs.coincident(g, midA, midB, wp);
+            handles.push(slvs.coincident(g, midA, midB, wp));
           }
         }
-        break;
+        return handles;
       }
       default:
         // Unknown constraint type — skip for now
-        break;
+        return handles;
     }
   }
 
@@ -220,7 +316,7 @@ export class SlvsAdapter {
    *   during a reconverge (e.g. the point in a midpoint constraint). All
    *   other non-anchor points will be marked as dragged (prefer to stay).
    */
-  solve(draggedPoints, freeMovePoints = null) {
+  solve(draggedPoints, freeMovePoints = null, calculateFaileds = false) {
     if (draggedPoints && draggedPoints.size > 0) {
       // User drag: mark dragged points as preferring to stay at mouse pos.
       for (const pt of draggedPoints) {
@@ -253,7 +349,73 @@ export class SlvsAdapter {
         this.slvs.markDragged(h);
       }
     }
-    return this.slvs.solveSketch(this.g, false);
+    return this.slvs.solveSketch(this.g, calculateFaileds);
+  }
+
+  /**
+   * Dry-run a sketch with a proposed constraint or dimension.
+   * Does not write back to the sketch.
+   * @param {object} sketch
+   * @param {{ constraint?: object, dimension?: { a, b, drivenValue } }} options
+   * @returns {{ wouldOverconstrain: boolean, result: object, bad: Uint32Array }}
+   */
+  wouldOverconstrain(sketch, { constraint, dimension } = {}) {
+    this.syncFromSketch(sketch, { proposedConstraint: constraint, proposedDimension: dimension });
+    const result = this.solve(null, null, true);
+    const okay = result.result === this.slvs.RESULT_OKAY
+              || result.result === this.slvs.RESULT_REDUNDANT_OKAY;
+    return {
+      wouldOverconstrain: !okay,
+      result,
+      bad: result.bad ?? [],
+    };
+  }
+
+  /**
+   * Analyze the current sketch state and report degrees of freedom plus any
+   * overconstraint messages from the solver's failed-constraint list.
+   * Does not write back to the sketch.
+   * @param {object} sketch
+   * @returns {{ dof: number, status: 'over'|'well'|'under', overconstrained: boolean, issues: object[], result: object }}
+   */
+  analyze(sketch) {
+    this.syncFromSketch(sketch);
+    const result = this.solve(null, null, true);
+    const okay = result.result === this.slvs.RESULT_OKAY
+              || result.result === this.slvs.RESULT_REDUNDANT_OKAY;
+    let status = 'under';
+    if (!okay) {
+      status = 'over';
+    } else if (result.dof === 0) {
+      status = 'well';
+    }
+    return {
+      dof: result.dof,
+      status,
+      overconstrained: !okay,
+      issues: this._buildIssues(result.bad ?? []),
+      result,
+    };
+  }
+
+  _buildIssues(bad) {
+    const issues = [];
+    const seen = new Set();
+    for (const h of bad) {
+      const info = this.handleToObject.get(h);
+      if (!info) continue;
+      const key = `${info.kind}:${info.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (info.kind === 'dimension') {
+        const a = info.obj.a.id + 1;
+        const b = info.obj.b.id + 1;
+        issues.push({ kind: 'Dimension', message: `Dimension between P${a} and P${b} could not be satisfied` });
+      } else {
+        issues.push({ kind: info.obj.type, message: `${info.obj.type} constraint could not be satisfied` });
+      }
+    }
+    return issues;
   }
 
   // ── Write back ───────────────────────────────────────────────────
@@ -285,6 +447,16 @@ export class SlvsAdapter {
         p.x = pos.x;
         p.y = pos.y;
       }
+    }
+
+    // Write back circle radii from the solver's distance entities.
+    // Circle center positions are already written back above (they're
+    // regular points in sketch.points).
+    for (const c of sketch.circles || []) {
+      const handles = this.circleHandles.get(c.id);
+      if (!handles?.radius) continue;
+      const rS = this.slvs.getParamValue(handles.radius.param[0]);
+      c.radius = this.solverToPx(rS);
     }
   }
 

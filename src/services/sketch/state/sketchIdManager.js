@@ -13,6 +13,8 @@ export function seedIdCountersFromSketch(service) {
   service._nextLineId = nextId(sketch.lines);
   service._nextDimId = nextId(sketch.dimensions);
   service._nextConstraintId = nextId(sketch.constraints);
+  service._nextCircleId = nextId(sketch.circles);
+  service._nextRectangleId = nextId(sketch.rectangles);
 }
 export function assignConstraintIds(service) {
   for (const constraint of service.store.state.sketch.constraints || []) {

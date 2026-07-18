@@ -44,7 +44,8 @@ export class SketchDimension {
 
   setDrivenValue(value) {
     this.drivenValue = value;
-    this.recompute();
+    // A driven dimension's kind is locked once the user drives it.
+    this.recompute(true);
   }
 
   /**
@@ -55,7 +56,8 @@ export class SketchDimension {
     this.drivenValue   = pixelValue;
     this.displayValue  = displayValue;
     this.displaySuffix = displaySuffix;
-    this.recompute();
+    // Preserve the kind; this is a driven dimension now.
+    this.recompute(true);
   }
 
   recompute(preserveKind = false) {

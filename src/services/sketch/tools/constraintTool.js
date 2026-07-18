@@ -1,6 +1,5 @@
 import { SketchConstraint } from '../../../models/sketch/sketchConstraint.js';
 import { ConstraintSubMode } from '../constants.js';
-import { wouldOverconstrain } from '../solver/dofAnalyzer.js';
 import { canAddPerpendicularConstraint } from '../solver/perpendicularFeasibility.js';
 import {
   assignConstraintIds,
@@ -39,7 +38,10 @@ export class ConstraintTool {
 
   /** Check overconstraint; reject if the draft would remove too many DOF. */
   _checkOverconstrain(draft, position) {
-    const overcheck = wouldOverconstrain(this.sketch, draft);
+    if (!this.service._slvsAdapter?.ready) {
+      return this._reject('Solver is not ready yet', position);
+    }
+    const overcheck = this.service._slvsAdapter.wouldOverconstrain(this.sketch, { constraint: draft });
     if (overcheck.wouldOverconstrain) {
       return this._reject(
         'Over-constrained: this would remove too many degrees of freedom', position,
@@ -84,7 +86,13 @@ export class ConstraintTool {
    * @param {SketchConstraint} constraint - the constraint to commit
    * @returns {true}
    */
-  _commit(description, constraint) {
+  _commit(description, constraint, position = null) {
+    if (!this.service._slvsAdapter?.ready) {
+      return this._reject('Solver is not ready yet', position);
+    }
+    if (!this._checkOverconstrain(constraint, position)) {
+      return false;
+    }
     this.service._recordSnapshot(description);
     this.sketch.constraints.push(constraint);
     assignConstraintIds(this.service);
@@ -182,6 +190,13 @@ export class ConstraintTool {
       return;
     }
 
+    if (constraintSubMode === ConstraintSubMode.Parallel) {
+      this._pickPendingLine(line, (a, b, pos) =>
+        this._tryCreateParallelConstraint(a, b, pos), position,
+        'Cannot constrain a line to itself');
+      return;
+    }
+
     if (constraintSubMode === ConstraintSubMode.Equal) {
       this._pickPendingLine(line, (a, b, pos) =>
         this._tryCreateEqualConstraint(a, b, pos), position,
@@ -248,17 +263,30 @@ export class ConstraintTool {
       return this._reject('Constraint not possible', position);
     }
 
-    if (!this._checkOverconstrain({
-      type: 'Perpendicular',
-      lineA: firstLine,
-      lineB: secondLine,
-    }, position)) return false;
-
     const constraint = new SketchConstraint(
       'Perpendicular', anchor, null, firstLine, secondLine,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add perpendicular constraint', constraint);
+    return this._commit('Add perpendicular constraint', constraint, position);
+  }
+
+  _tryCreateParallelConstraint(firstLine, secondLine, position = null) {
+    if (!firstLine || !secondLine) return false;
+    if (firstLine === secondLine) {
+      return this._reject('Cannot constrain a line to itself', position);
+    }
+
+    const existing = this._findLinePair('Parallel', firstLine, secondLine);
+    if (existing) {
+      this.service.selectConstraint(existing);
+      return true;
+    }
+
+    const constraint = new SketchConstraint(
+      'Parallel', null, null, firstLine, secondLine,
+      this.service._nextConstraintId++,
+    );
+    return this._commit('Add parallel constraint', constraint, position);
   }
 
   _tryCreateMidpointConstraint(line, point, position = null) {
@@ -275,17 +303,11 @@ export class ConstraintTool {
       return true;
     }
 
-    if (!this._checkOverconstrain({
-      type: 'Midpoint',
-      pointA: point,
-      lineA: line,
-    }, position)) return false;
-
     const constraint = new SketchConstraint(
       'Midpoint', point, null, line, null,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add midpoint constraint', constraint);
+    return this._commit('Add midpoint constraint', constraint, position);
   }
 
   _tryCreateMidpointLineLineConstraint(firstLine, secondLine, position = null) {
@@ -303,17 +325,11 @@ export class ConstraintTool {
       return true;
     }
 
-    if (!this._checkOverconstrain({
-      type: 'Midpoint',
-      lineA: firstLine,
-      lineB: secondLine,
-    }, position)) return false;
-
     const constraint = new SketchConstraint(
       'Midpoint', null, null, firstLine, secondLine,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add midpoint constraint', constraint);
+    return this._commit('Add midpoint constraint', constraint, position);
   }
 
   _tryCreateEqualConstraint(firstLine, secondLine, position = null) {
@@ -328,17 +344,11 @@ export class ConstraintTool {
       return true;
     }
 
-    if (!this._checkOverconstrain({
-      type: 'Equal',
-      lineA: firstLine,
-      lineB: secondLine,
-    }, position)) return false;
-
     const constraint = new SketchConstraint(
       'Equal', null, null, firstLine, secondLine,
       this.service._nextConstraintId++,
     );
-    return this._commit('Add equal constraint', constraint);
+    return this._commit('Add equal constraint', constraint, position);
   }
 
   _tryCreateAxisConstraint(line, position = null) {
@@ -356,16 +366,11 @@ export class ConstraintTool {
       return true;
     }
 
-    if (!this._checkOverconstrain({
-      type,
-      lineA: line,
-    }, position)) return false;
-
     const constraint = new SketchConstraint(
       type, null, null, line, null,
       this.service._nextConstraintId++,
     );
-    return this._commit(`Add ${type.toLowerCase()} constraint`, constraint);
+    return this._commit(`Add ${type.toLowerCase()} constraint`, constraint, position);
   }
 
   _tryCreateCoincidentConstraint(firstPoint, secondPoint, position = null) {
@@ -396,6 +401,6 @@ export class ConstraintTool {
       }
     };
 
-    return this._commit('Add coincident constraint', constraint, snap);
+    return this._commit('Add coincident constraint', constraint, position);
   }
 }

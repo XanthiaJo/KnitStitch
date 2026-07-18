@@ -53,6 +53,8 @@ export function clear(service, ) {
     sketch.lines = [];
     sketch.dimensions = [];
     sketch.constraints = [];
+    sketch.circles = [];
+    sketch.rectangles = [];
     service._seedIdCountersFromSketch();
     service._pendingStart = null;
     service._setPreviewLine(null);
@@ -64,9 +66,13 @@ export function clear(service, ) {
     service.store.set('sketch.points', [...sketch.points]);
     service.store.set('sketch.dimensions', []);
     service.store.set('sketch.constraints', []);
+    service.store.set('sketch.circles', []);
+    service.store.set('sketch.rectangles', []);
 }
 export function cancelCurrentLine(service, ) {
     service._lineTool.cancel();
+    if (service._circleTool) service._circleTool.cancel();
+    if (service._rectangleTool) service._rectangleTool.cancel();
     if (service._dimPendingA) {
       service._removeOrphanPoint(service._dimPendingA);
       service._dimPendingA = null;
