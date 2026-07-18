@@ -10,7 +10,7 @@
  * Usage:
  *   node scripts/generate-build-info.mjs --root=. --output=src/buildInfo.js --format=js
  *   node scripts/generate-build-info.mjs --root=. --output=CHANGELOG.md --format=md
- *   node scripts/generate-build-info.mjs --root=. --output=public/changelog-v2.html --format=html
+ *   node scripts/generate-build-info.mjs --root=. --output=public/pages/changelog-v2.html --format=html
  *
  * Parameters:
  *   --root     Repository root path (required)
