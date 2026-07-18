@@ -17,6 +17,13 @@ For low-level import/export maps and dependency graphs, see [agents/project-map.
 | `docs/agents/project-map.md` | Detailed file index with imports, exports, and dependency graph. |
 | `docs/agents/roadmap.md` | Agent-level roadmap with implementation details and refactor plans. |
 
+## Planned Account Backend
+
+The account backend does not exist yet. The roadmap calls for a self-hosted
+Node/TypeScript API using Better Auth, with `/api` routes for authentication
+and user-owned saved patterns. When implementation begins, add its source
+layout, environment configuration, migrations, and test commands to this map.
+
 ## Bootstrap & Stage
 
 | File | Summary |

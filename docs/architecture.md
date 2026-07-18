@@ -10,7 +10,7 @@ For low-level implementation details (solver math, constraint internals, file-by
 
 KnitStitch is a parametric sketch tool for knitters. It lets users draw shapes on an infinite grid, apply geometric constraints (like Fusion 360), and generate knitting patterns from the resulting filled cells.
 
-The app is built with Konva.js (canvas rendering) and a small reactive store. It is a standalone front-end app served from its own subdomain — there is no backend.
+The app is built with Konva.js (canvas rendering) and a small reactive store. The current app is a standalone front-end served from its own subdomain, with local-only persistence. Account-backed persistence is planned through a self-hosted Node/TypeScript API using Better Auth; authentication and pattern authorization will live on the server, not in the browser.
 
 ## The big picture
 
@@ -21,6 +21,15 @@ index.html (standalone entry point)
         ├─> SketchService  — coordinator for all sketch logic
         ├─> AppStage       — Konva canvas with three layers
         └─> MainUI         — sidebar panels and controls
+
+Planned account-backed flow:
+
+KnitStitch frontend
+  └─> same-origin `/api` requests
+        └─> self-hosted Node/TypeScript API
+              ├─> Better Auth — users and sessions
+              ├─> Pattern API — ownership-checked saved patterns
+              └─> Database    — auth and application data
 ```
 
 ### What each piece does
@@ -94,7 +103,15 @@ Templates generate a complete sketch from body measurements. The sock template c
 
 ## State persistence
 
-The entire app state (sketch entities, grid cells, gauge, zoom/pan) is saved to localStorage automatically (debounced 300ms). On page load, the state is hydrated and legacy formats are migrated.
+The current app state (sketch entities, grid cells, gauge, zoom/pan) is saved to
+localStorage automatically (debounced 300ms). On page load, the state is
+hydrated and legacy formats are migrated. This is browser-local persistence,
+not secure account storage.
+
+The planned account system will distinguish local drafts from saved patterns:
+localStorage may continue to support offline work, while explicitly saved
+patterns will be sent to the authenticated API and protected by server-side
+ownership checks.
 
 ## File layout
 

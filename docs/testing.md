@@ -101,13 +101,21 @@ webServer: {
 }
 ```
 
-No DDEV or backend is required. Just run the tests.
+The current frontend E2E suite does not require DDEV or an application
+backend. Just run the tests.
 
 ```bash
 npx playwright test
 ```
 
-If you need to point at a different host, edit `use.baseURL` and `webServer.url` in `playwright.config.js`.
+When the planned Better Auth API is introduced, the authentication and saved
+pattern E2E suite will need a test database and API process. Keep the existing
+frontend-only suite fast and add a separate authenticated test configuration
+or setup path rather than making every canvas test depend on the account
+backend.
+
+If you need to point at a different host, edit `use.baseURL` and
+`webServer.url` in `playwright.config.js`.
 
 ### Creating an E2E test
 

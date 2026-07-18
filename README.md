@@ -13,3 +13,9 @@ This is very much a work in progress with lots of ideas and features to add. If 
 ## Deployment
 
 The app is hosted on a VPS and deploys automatically when commits land on the `master` branch via a GitHub webhook. A small Node.js webhook server (`scripts/webhook-server.mjs`, kept alive with PM2) verifies the GitHub signature, pulls the latest code, and runs `npm ci` + `npm run build` to produce the static `dist/` directory.
+
+The current application is local-only and does not yet have accounts or
+server-backed pattern storage. The planned account system will add a
+self-hosted Node/TypeScript API using Better Auth, preferably behind the same
+origin under `/api`. See the [roadmap](docs/roadmap.md#accounts-and-saved-patterns)
+for the planned authentication, authorization, and saved-pattern work.

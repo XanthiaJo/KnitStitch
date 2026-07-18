@@ -1,7 +1,7 @@
 # KnitStitch Agent Notes
 
 This file contains the agent guidance for the KnitStitch Grid app.
-KnitStitch is a standalone front-end app (no longer embedded in Craft CMS).
+KnitStitch is a standalone front-end app (no longer embedded in Craft CMS). Account-backed persistence is planned through a self-hosted Node/TypeScript API using Better Auth.
 
 ## Scope
 
@@ -19,7 +19,9 @@ KnitStitch Grid is a Konva.js web conversion of the original KnitStichGrid WPF d
 
 ## Running Locally
 
-No CMS or backend is required. The app runs entirely through Vite.
+The current frontend runs entirely through Vite; the planned account and saved
+pattern features will add a separate Node/TypeScript API using Better Auth.
+No backend is currently required for the existing local-only app.
 
 ```bash
 npm install
@@ -29,6 +31,9 @@ npm run preview  # Serve the built dist/ locally
 npm run build-info       # Generate src/buildInfo.js + CHANGELOG.md from git history
 npm run build-changelog  # Generate just CHANGELOG.md
 ```
+
+When the account backend is introduced, document its local start command,
+database setup, environment variables, and same-origin `/api` proxy here.
 
 ## Versioning and Changelog
 

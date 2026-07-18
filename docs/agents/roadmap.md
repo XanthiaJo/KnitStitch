@@ -2,7 +2,7 @@
 
 Internal, detail-heavy notes for agents working on KnitStitch. This is the companion to the human-readable [../roadmap.md](../roadmap.md).
 
-_Last updated: 2026-07-15_
+_Last updated: 2026-07-18_
 
 ---
 
@@ -10,23 +10,80 @@ _Last updated: 2026-07-15_
 
 | Area | Status |
 |---|---|
-| Global constraint solver | Shipped |
-| SolveSpace WASM solver migration | Planned — 4-phase, feature-flagged |
-| Constraint types | 6 shipped (Coincident, Perpendicular, Midpoint, Equal Length, Horizontal/Vertical, Driven Dimensions) |
-| E2E test coverage | 19 passing (run via Playwright against DDEV) |
-| Unit test coverage | 67 passing across 12 files |
+| Constraint solver | Shipped — SolveSpace WASM is the sole backend |
+| SolveSpace WASM solver migration | Complete — adapter, lazy loading, validation, and native solver removal |
+| Authentication and saved patterns | Planned — self-hosted Better Auth with a Node/TypeScript API |
+| Constraint types | 7 shipped families (8 including midpoint variants: Coincident, Perpendicular, Midpoint, Equal, Horizontal/Vertical, Parallel, Driven Dimensions) |
+| E2E test setup | Vite dev server; see `docs/testing.md` for current commands |
+| Unit test setup | Vitest; see `docs/testing.md` for current commands |
 | Sketch service refactor (`sketchService.js`) | Complete — tool registry extracted, service is a thin coordinator (~300 lines, all forwarders) |
 | UI refactor (`mainUi.js`) | Complete — split into 7 focused panel controllers, mainUi.js is a 63-line orchestrator |
 
 ---
 
+## Authentication and Saved Patterns
+
+Introduce account-backed persistence without putting authentication logic or
+secrets in the static Vite frontend. The planned deployment is a small
+self-hosted Node/TypeScript API using Better Auth, with the frontend and API
+preferably served behind the same origin (`/api`) to simplify secure cookie
+handling and avoid unnecessary CORS configuration.
+
+Better Auth is the authentication library, not a hosted authentication server.
+The application will operate its own API, database, and Better Auth setup. The
+repository may contain the server source and schema migrations, but production
+secrets must remain in deployment environment variables.
+
+### Scope
+
+- Email/password registration and login
+- Secure server-managed sessions and logout
+- Email verification and password reset
+- User-owned saved patterns
+- Server-side authorization for every pattern read, write, and delete
+- Local drafts remain supported, but are not treated as secure account storage
+
+### Planned phases
+
+1. **Backend foundation** — Add the Node/TypeScript API, database connection,
+   environment configuration, migrations, and deployment routing.
+2. **Better Auth integration** — Enable email/password authentication, mount
+   the auth routes, configure secure cookies, and add session lookup helpers.
+3. **Account lifecycle** — Add verification email, password reset, logout,
+   session expiry/revocation, and generic authentication error handling.
+4. **Pattern persistence** — Add user-owned pattern tables and API endpoints;
+   enforce ownership using the authenticated user ID rather than trusting IDs
+   supplied by the browser.
+5. **Frontend integration** — Add account UI, authenticated fetch helpers,
+   login-state hydration, and clear unauthenticated/expired-session behavior.
+6. **Security and operations** — Add HTTPS-only deployment, rate limiting,
+   security-event logging without credentials, email delivery, backups, and
+   documented secret management.
+7. **Verification** — Add e2e coverage for registration, login, logout,
+   password reset, expired sessions, and attempts to access another user's
+   pattern.
+
+### Decisions and constraints
+
+- Do not implement password hashing, session issuance, reset tokens, or email
+  verification directly in the browser or from scratch.
+- Do not expose `DATABASE_URL`, Better Auth secrets, SMTP credentials, OAuth
+  client secrets, or encryption keys through Vite client variables.
+- Use the same-origin `/api` layout where practical; if separate origins are
+  required, configure an explicit allowlist and credentialed CORS.
+- Start with email/password only. Consider passkeys or social login after the
+  core account and ownership model is tested.
+- Authentication and authorization are separate: a valid session alone must
+  not grant access to another user's patterns.
+
+---
+
 ## SolveSpace WASM Solver Migration
 
-Replace the hand-rolled gradient-descent solver (`globalConstraintSolver.js`
-+ supporting error/feasibility/DOF modules) with SolveSpace's Newton's-method
-solver, compiled to WebAssembly via Emscripten. Shipped behind a feature flag
-so the native solver stays the default until the WASM backend passes the
-existing e2e suite.
+Replace the hand-rolled gradient-descent solver and supporting native solver
+modules with SolveSpace's Newton's-method solver, compiled to WebAssembly via
+Emscripten. This migration is complete: SolveSpace is the shipped backend,
+loads lazily, and the old native solver implementation has been removed.
 
 Companion to the human-readable plan in [../roadmap.md](../roadmap.md#solvespace-solver-migration).
 
@@ -34,14 +91,14 @@ Companion to the human-readable plan in [../roadmap.md](../roadmap.md#solvespace
 
 - Battle-tested parametric 2D/3D CAD solver (used by the SolveSpace desktop app)
 - Handles constraint types we'd otherwise hand-code: parallel, fixed angle, symmetric, collinear, tangent, equal radius, etc.
-- Internal feasibility + overconstraint detection via `SolveResult` codes — lets us delete `perpendicularFeasibility.js`, `overconstraintChecker.js`, `dofAnalyzer.js`
+- Internal feasibility and overconstraint detection via `SolveResult` codes, with the existing feasibility and DOF helpers retained where they provide user-facing analysis
 - Official JS/WASM bindings exist in-repo at `solvespace/solvespace/js/slvs.d.ts`
 
 ### Why not trivial
 
 - **No published npm package.** However, as of December 2024 (PR #1343, commit `a208201c`), SolveSpace master includes a stateful C library (`src/slvs/lib.cpp`), embind JS bindings (`src/slvs/jslib.cpp`), a CMake `slvs-wasm` target (`src/slvs/CMakeLists.txt`), and a CI build script (`.github/scripts/build-wasmlib.sh`). We fork `solvespace/solvespace` directly and build the existing target — no custom bindings or CMake glue needed.
 - **GPL-3.0 licensing.** SolveSpace is GPL-3.0-or-later with no linking exception. The compiled `slvs.wasm` is a derivative work, so distributing it inside KnitStitch makes the whole app GPL-3.0-or-later. KnitStitch has adopted GPL-3.0-or-later accordingly (see `LICENSE`).
-- **Separate JS/WASM pair** first-load cost (`slvs.js` plus `slvs.wasm`) — mitigated by lazy loading only when `solverBackend === 'slvs'`.
+- **Separate JS/WASM pair** first-load cost (`slvs.js` plus `slvs.wasm`) — mitigated by lazy loading and the boot loading overlay.
 - **Coordinate system mismatch** — SolveSpace works in arbitrary units in a 2D workplane; we solve in inches and convert to/from pixels via the gauge.
 
 ### Fork strategy
@@ -183,15 +240,11 @@ class SlvsAdapter {
 | Midpoint (line-line) | Add a point at each line midpoint, then `coincident` | composite |
 | Driving Dimension | `slvs.distance(g, ptA, ptB, inchesValue, wp)` | `C_PT_PT_DISTANCE` |
 
-### Phase 3 — Feature flag wiring
+### Phase 3 — Solver integration and lazy loading
 
-#### Store change
-
-Add to `sketch` state in `src/state/store.js`:
-
-```javascript
-solverBackend: 'native',  // 'native' | 'slvs'
-```
+The former feature flag has been retired because SolveSpace is now the sole
+constraint backend. `sketchService.js` owns the single solve dispatch path and
+memoizes the lazy adapter initialization.
 
 #### Single dispatch point in `sketchService.js`
 
@@ -204,36 +257,21 @@ _solve(sketch, movedPoints) {
 }
 ```
 
-Adapter loads lazily in the constructor:
-
-```javascript
-constructor(store) {
-  // ...existing...
-  this._slvsAdapter = null;
-  if (store.state.sketch.solverBackend === 'slvs') this._initSlvsAdapter();
-}
-_initSlvsAdapter() {
-  this._slvsAdapter = new SlvsAdapter();
-  this._slvsAdapter.init().catch(e => console.error('SlvsAdapter init failed', e));
-}
-```
-
-The native path stays the default; the WASM only downloads when the flag flips.
+The adapter is initialized on demand by `ensureSolver()`, which memoizes the
+in-flight promise and completed adapter so repeated calls are safe. Boot and
+constraint-related interactions can trigger the same lazy load without
+creating multiple solver instances.
 
 ### Phase 4 — Validate, then delete
 
-1. **E2E validation** — run `e2e/sketchConstraints.spec.js` with
-   `solverBackend: 'slvs'`. The existing scenarios (perpendicularity, dimension
-   locking, coincident, midpoint, equal) are the source of truth per the
-   e2e-first testing approach in `AGENTS.md`. Run them under both backends.
-2. **Result code mapping** — map SolveSpace `SolveResult` codes to user-facing
-   feedback:
-   - `RESULT.OK` → success
-   - `RESULT.DIDNT_CONVERGE` → "constraint system could not be satisfied"
-   - `RESULT.SINGULAR_JACOBIAN` → "over-constrained or redundant"
-   - `RESULT.TOO_MANY_UNKNOWNS` → "sketch too large for solver"
-3. **Flip default** to `'slvs'` once e2e is green. ✅ Done
-4. **Delete** the now-redundant native solver modules: ✅ Done
+1. **E2E validation** — completed for the shipped SolveSpace workflows,
+   including perpendicularity, dimensions, coincident, midpoint, equal, and
+   parallel constraints. The e2e-first testing approach in `AGENTS.md` remains
+   the source of truth.
+2. **Result code mapping** — completed in the adapter, including successful,
+   redundant, failed, and non-convergent solve outcomes.
+3. **Ship SolveSpace as the default backend** — ✅ Done
+4. **Delete** the now-redundant native solver modules — ✅ Done
 
 | File | Status |
 |---|---|
@@ -267,9 +305,12 @@ The native path stays the default; the WASM only downloads when the flag flips.
 
 ---
 
-## Recent Shipping: Global Constraint Solver + Sock Template Fix
+## Historical Shipping: Global Constraint Solver + Sock Template Fix
 
-### What shipped
+The global numerical solver was an earlier milestone and has since been
+replaced by the shipped SolveSpace backend described above.
+
+### What shipped historically
 
 | Feature | Notes |
 |---|---|
@@ -312,8 +353,7 @@ while error > 1e-6 and iterations < 100:
 | Issue | Description | Where to fix |
 |---|---|---|
 | Right-side notch drift | Points 13 and 16 are determined only by Equal-length constraints, which leaves a small residual drift (~6 px) when those points are dragged directly | Add an angle or symmetry constraint, or hard-enforce equal constraints after dimension application |
-| DOF analysis | No degrees-of-freedom count; under-constrained sketches silently remain editable | New analysis pass in solver or UI |
-| Over-constrained detection | Solver returns `null` and falls back to local solver; no user-facing message | Improve `_isFeasible` and add UI feedback |
+| Historical solver notes | The current SolveSpace adapter owns solving and reports constraint status through the sketch panel | Keep e2e coverage aligned with user-visible solver behavior |
 
 ---
 
@@ -340,7 +380,7 @@ Implementation for the following features is largely complete; coverage is missi
 | Test | Type | Coverage Needed |
 |---|---|---|
 | Midpoint constraint creation and dragging | E2E | Creation + drag interaction |
-| Equal length constraint creation and dragging | E2E | Creation + drag interaction |
+| Equal length constraint creation and dragging | E2E | Covered by current equal-length specs; expand if new workflows are added |
 | Zoom/pan coordinate transforms | Unit | Projection math |
 | Zoom controls changing stage scale | E2E | Button/wheel zoom |
 | `sockMeasurements.js` | Unit | Gauge conversion, ease, roundEven, section math, notch derivation |
