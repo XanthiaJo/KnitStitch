@@ -124,6 +124,17 @@ rather than account-protected data.
 
 ---
 
+## Responsive / Mobile Support
+
+The current editor is designed for larger screens. Small-screen layouts can
+make the canvas and editing controls render incorrectly or become unusable.
+
+- [x] Show a small-screen warning page when the app is opened on an unsupported phone-sized viewport
+- [ ] Make the editor and its drawing tools usable on phones
+- [ ] Add responsive interaction and e2e coverage for supported mobile layouts
+
+---
+
 ## Testing
 
 - [x] E2E Playwright tests for sketch constraints and interactions

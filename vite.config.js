@@ -69,7 +69,7 @@ function organisePages() {
       try { rmSync(partialsDir, { recursive: true, force: true }); } catch {}
 
       // Replace the source copies of the Vite-built pages with the built versions.
-      for (const file of ['index.html', 'readme.html', 'roadmap.html', 'changelog.html']) {
+      for (const file of ['index.html', 'readme.html', 'roadmap.html', 'changelog.html', 'small-screen-warning.html']) {
         const src = resolve(outDir, file);
         const dest = resolve(pagesDir, file);
         try { rmSync(dest, { force: true }); } catch {}
@@ -100,6 +100,7 @@ export default {
         readme: resolve(projectRoot, 'public/pages/readme.html'),
         roadmap: resolve(projectRoot, 'public/pages/roadmap.html'),
         changelog: resolve(projectRoot, 'public/pages/changelog.html'),
+        smallScreenWarning: resolve(projectRoot, 'public/pages/small-screen-warning.html'),
       },
       output: {
         entryFileNames: 'assets/[name].js',

@@ -8,6 +8,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <script>
+    // Small-screen guard: redirect phone-sized viewports to the warning page
+    // before the editor or WASM solver loads. Runs in <head> so the editor
+    // never paints on an unsupported screen. A sessionStorage bypass is set
+    // by the warning page's "Continue" link so users can still proceed.
+    (function () {
+      try {
+        var BYPASS_KEY = 'knitstitch:small-screen-bypass';
+        var SMALL_BREAKPOINT = 768; // px — adjust to tune phone/tablet cutoff
+        if (window.matchMedia('(max-width: ' + SMALL_BREAKPOINT + 'px)').matches
+            && !sessionStorage.getItem(BYPASS_KEY)) {
+          window.location.replace('/small-screen-warning.html');
+        }
+      } catch (e) { /* ignore — never block the editor on detection failure */ }
+    })();
+  </script>
 </head>
 <body class="page-knitstitch page-home">
 

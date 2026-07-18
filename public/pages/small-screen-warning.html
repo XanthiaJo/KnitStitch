@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Small Screen Notice — KnitStitch Grid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="page-document page-small-screen-warning">
+
+  <!-- #include file="partials/header.html" -->
+
+  <main class="page-main small-screen-warning">
+    <div class="shell">
+      <section class="small-screen-warning__panel" aria-labelledby="small-screen-warning-title">
+        <p class="small-screen-warning__eyebrow">KnitStitch Grid</p>
+        <h1 id="small-screen-warning-title">A larger screen is recommended</h1>
+        <p class="small-screen-warning__message">
+          KnitStitch Grid is not currently designed for phones or other small screens.
+          The drawing canvas and editing tools may not render correctly and may not be usable.
+        </p>
+        <p>
+          Please return on a desktop or tablet with a larger screen for the best experience.
+          Mobile support is planned for a future version.
+        </p>
+        <a class="button button-primary" href="/" id="small-screen-continue">Continue to KnitStitch Grid</a>
+      </section>
+    </div>
+  </main>
+
+  <!-- #include file="partials/footer.html" -->
+  <script>
+    // Acknowledge the warning for this session so the editor's small-screen
+    // guard does not bounce the user straight back here.
+    (function () {
+      var link = document.getElementById('small-screen-continue');
+      if (!link) return;
+      link.addEventListener('click', function () {
+        try { sessionStorage.setItem('knitstitch:small-screen-bypass', '1'); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>
