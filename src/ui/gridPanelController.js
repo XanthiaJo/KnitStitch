@@ -8,6 +8,7 @@ import { collectRefs, bindIfPresent } from './uiUtils.js';
 const REF_IDS = {
   gaugeStitchesInput: 'gauge-stitches',
   gaugeRowsInput: 'gauge-rows',
+  fillThresholdInput: 'fill-threshold',
   finishedWidth: 'finished-width',
   finishedHeight: 'finished-height',
   recalcBtn: 'btn-recalculate',
@@ -23,11 +24,13 @@ export function setupGridPanel({ store, documentObj = globalThis.document }) {
   function updateGridSidebar() {
     const gs = store.get('stitchesPer4Inches');
     const gr = store.get('rowsPer4Inches');
+    const fillThreshold = store.get('fillThreshold');
     const fw = store.get('finishedWidth');
     const fh = store.get('finishedHeight');
 
     if (refs.gaugeStitchesInput) refs.gaugeStitchesInput.value = gs;
     if (refs.gaugeRowsInput) refs.gaugeRowsInput.value = gr;
+    if (refs.fillThresholdInput) refs.fillThresholdInput.value = Math.round(fillThreshold * 100);
     if (refs.finishedWidth) refs.finishedWidth.textContent = `Width: ${fw > 0 ? fw.toFixed(2) : '--'} in`;
     if (refs.finishedHeight) refs.finishedHeight.textContent = `Height: ${fh > 0 ? fh.toFixed(2) : '--'} in`;
   }
@@ -44,7 +47,7 @@ export function setupGridPanel({ store, documentObj = globalThis.document }) {
       store.get('sketch.lines'),
       cw,
       ch,
-      0.3,
+      store.get('fillThreshold'),
     );
     const bbox = getCombinedBoundingBox(filledCells, sketchFilled);
     const stitchCount = bbox ? (bbox.maxCol - bbox.minCol + 1) : 0;
@@ -67,6 +70,12 @@ export function setupGridPanel({ store, documentObj = globalThis.document }) {
     recalculateSize();
   });
 
+  bindIfPresent(refs.fillThresholdInput, 'change', () => {
+    const percentage = Math.max(0, Math.min(100, Number(refs.fillThresholdInput.value)));
+    store.set('fillThreshold', Number.isFinite(percentage) ? percentage / 100 : 0.3);
+    recalculateSize();
+  });
+
   bindIfPresent(refs.recalcBtn, 'click', recalculateSize);
 
   // Store subscription
@@ -75,12 +84,13 @@ export function setupGridPanel({ store, documentObj = globalThis.document }) {
       path === 'filledCells' ||
       path === 'cellWidthPx' ||
       path === 'cellHeightPx' ||
+      path === 'fillThreshold' ||
       path === 'stitchesPer4Inches' ||
       path === 'rowsPer4Inches' ||
       path === 'finishedWidth' ||
       path === 'finishedHeight'
     ) {
-      if (path === 'filledCells' || path === 'cellWidthPx' || path === 'cellHeightPx') {
+      if (path === 'filledCells' || path === 'cellWidthPx' || path === 'cellHeightPx' || path === 'fillThreshold') {
         recalculateSize();
       }
       updateGridSidebar();

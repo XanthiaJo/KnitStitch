@@ -52,6 +52,7 @@ export function setupZoomController({ store, documentObj = globalThis.document }
       store.get('sketch.lines'),
       cellW,
       cellH,
+      store.get('fillThreshold'),
     );
     const bbox = getCombinedBoundingBox(filledCells, sketchFilled);
     if (!bbox) return { w: 0, h: 0 };

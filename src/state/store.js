@@ -12,6 +12,7 @@ class Store {
       currentWorkspace: 'sketch',  // 'sketch' | 'overlay' | 'templates' | 'options'
       stitchesPer4Inches: 20,
       rowsPer4Inches: 28,
+      fillThreshold: 0.3,
       finishedWidth: 0,
       finishedHeight: 0,
       overlayImageSrc: null,

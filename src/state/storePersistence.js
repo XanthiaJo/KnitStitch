@@ -16,6 +16,7 @@ const PERSISTED_PATHS = new Set([
   'cellHeightPx',
   'stitchesPer4Inches',
   'rowsPer4Inches',
+  'fillThreshold',
   'filledCells',
   'overlayImageSrc',
   'overlayOpacity',
@@ -67,7 +68,7 @@ export class StorePersistence {
     // Scalar top-level keys
     const scalars = [
       'cellWidthPx', 'cellHeightPx',
-      'stitchesPer4Inches', 'rowsPer4Inches',
+      'stitchesPer4Inches', 'rowsPer4Inches', 'fillThreshold',
       'overlayOpacity', 'overlayVisible', 'overlayImageSrc',
       'zoomLevel', 'activeTemplateId',
     ];
@@ -142,6 +143,7 @@ export class StorePersistence {
       cellHeightPx: state.cellHeightPx,
       stitchesPer4Inches: state.stitchesPer4Inches,
       rowsPer4Inches: state.rowsPer4Inches,
+      fillThreshold: state.fillThreshold,
       filledCells: Array.from(state.filledCells),
       overlayImageSrc: state.overlayImageSrc,
       overlayOpacity: state.overlayOpacity,

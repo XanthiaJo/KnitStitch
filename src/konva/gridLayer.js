@@ -58,6 +58,7 @@ export class GridLayer {
       path === 'cellWidthPx' ||
       path === 'cellHeightPx' ||
       path === 'filledCells' ||
+      path === 'fillThreshold' ||
       path === 'sketch.lines' ||
       path === 'sketch.isActive' ||
       path === 'cellFillEnabled'
@@ -137,7 +138,8 @@ export class GridLayer {
     const lines = this.store.get('sketch.lines');
     // Use line count + a fingerprint of line endpoints so that moving
     // a point (without adding/removing lines) invalidates the cache.
-    let key = '0';
+    const fillThreshold = this.store.get('fillThreshold');
+    let key = `threshold:${fillThreshold}`;
     if (lines && lines.length > 0) {
       let h = lines.length;
       for (const l of lines) {
@@ -150,8 +152,8 @@ export class GridLayer {
     if (this._sketchFilledKey !== key || this._sketchFilledCache === null) {
       const cellW = this.store.get('cellWidthPx');
       const cellH = this.store.get('cellHeightPx');
-      // Use a lower threshold (0.3 = 30%) for better symmetry in complex shapes
-      this._sketchFilledCache = computeFilledCellsFromSketch(lines, cellW, cellH, 0.3);
+      // Use the user-configured percentage for sketch-derived fills.
+      this._sketchFilledCache = computeFilledCellsFromSketch(lines, cellW, cellH, this.store.get('fillThreshold'));
       this._sketchFilledKey = key;
     }
     return this._sketchFilledCache;
