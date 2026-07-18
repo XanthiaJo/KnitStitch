@@ -3,22 +3,7 @@ import { SketchObjectKind } from '../constants.js';
 export function buildSketchObjects(sketch, { findSharedPoint }) {
   const objects = [];
 
-  // Build a set of component IDs owned by rectangles so we can filter them
-  // out of the individual line/point/constraint listings — they show as a
-  // single "Rectangle N" entry instead.
-  const rectOwnedPointIds = new Set();
-  const rectOwnedLineIds = new Set();
-  const rectOwnedConstraintIds = new Set();
-  for (const rect of sketch.rectangles || []) {
-    if (rect.center) rectOwnedPointIds.add(rect.center.id);
-    for (const p of rect.corners) rectOwnedPointIds.add(p.id);
-    for (const l of rect.edges) rectOwnedLineIds.add(l.id);
-    for (const l of rect.constructionLines) rectOwnedLineIds.add(l.id);
-    for (const c of rect.constraints) rectOwnedConstraintIds.add(c.id);
-  }
-
   for (const line of sketch.lines) {
-    if (rectOwnedLineIds.has(line.id)) continue;
     const prefix = line.isConstruction ? 'Construction ' : '';
     objects.push({
       kind: SketchObjectKind.Line,
@@ -26,19 +11,6 @@ export function buildSketchObjects(sketch, { findSharedPoint }) {
       refType: 'line',
       refId: line.id,
       isSelected: line.isSelected,
-    });
-  }
-
-  // Rectangles (shown before points so they appear as grouped entities)
-  for (const rect of sketch.rectangles || []) {
-    const cx = rect.center?.x ?? 0;
-    const cy = rect.center?.y ?? 0;
-    objects.push({
-      kind: SketchObjectKind.Rectangle,
-      label: `Rectangle R${rect.id + 1}  @ (${cx.toFixed(0)},${cy.toFixed(0)})`,
-      refType: 'rectangle',
-      refId: rect.id,
-      isSelected: rect.isSelected,
     });
   }
 
@@ -53,9 +25,19 @@ export function buildSketchObjects(sketch, { findSharedPoint }) {
     });
   }
 
+  // Béziers
+  for (const bezier of sketch.beziers || []) {
+    objects.push({
+      kind: SketchObjectKind.Bezier,
+      label: `Bézier B${bezier.id + 1}  (${bezier.start.x.toFixed(0)},${bezier.start.y.toFixed(0)}) -> (${bezier.end.x.toFixed(0)},${bezier.end.y.toFixed(0)})`,
+      refType: 'bezier',
+      refId: bezier.id,
+      isSelected: bezier.isSelected,
+    });
+  }
+
   const usage = new Map();
   for (const line of sketch.lines) {
-    if (rectOwnedLineIds.has(line.id)) continue;
     if (!usage.has(line.start)) usage.set(line.start, []);
     if (!usage.has(line.end)) usage.set(line.end, []);
     usage.get(line.start).push(line.id);
@@ -87,7 +69,6 @@ export function buildSketchObjects(sketch, { findSharedPoint }) {
   }
   for (const pt of sketch.points) {
     if (pt.isAnchor) continue;
-    if (rectOwnedPointIds.has(pt.id)) continue;
     objects.push({
       kind: SketchObjectKind.Point,
       label: `Point P${pt.id + 1}  (${pt.x.toFixed(0)},${pt.y.toFixed(0)})`,
@@ -98,7 +79,6 @@ export function buildSketchObjects(sketch, { findSharedPoint }) {
   }
 
   for (const constraint of sketch.constraints || []) {
-    if (rectOwnedConstraintIds.has(constraint?.id)) continue;
     let label = constraint?.description ?? 'Constraint';
     let kind = SketchObjectKind.Constraint;
 

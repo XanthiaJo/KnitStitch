@@ -3,7 +3,7 @@ import { SketchLine } from '../../../models/sketch/sketchLine.js';
 import { SketchDimension } from '../../../models/sketch/sketchDimension.js';
 import { SketchConstraint } from '../../../models/sketch/sketchConstraint.js';
 import { SketchCircle } from '../../../models/sketch/sketchCircle.js';
-import { SketchRectangle } from '../../../models/sketch/sketchRectangle.js';
+import { SketchBezier } from '../../../models/sketch/sketchBezier.js';
 import { flushSketchArrays, rebuildSketchObjects } from './sketchStateHelpers.js';
 
 /**
@@ -49,14 +49,13 @@ export function captureSketchSnapshot(sketch, service) {
       radius: c.radius,
       isSelected: c.isSelected,
     })),
-    rectangles: (sketch.rectangles || []).map((r) => ({
-      id: r.id,
-      centerId: r.center?.id ?? null,
-      cornerIds: r.corners.map((p) => p.id),
-      edgeIds: r.edges.map((l) => l.id),
-      constructionLineIds: r.constructionLines.map((l) => l.id),
-      constraintIds: r.constraints.map((c) => c.id),
-      isSelected: r.isSelected,
+    beziers: (sketch.beziers || []).map((b) => ({
+      id: b.id,
+      startId: b.start.id,
+      control1Id: b.control1.id,
+      control2Id: b.control2.id,
+      endId: b.end.id,
+      isSelected: b.isSelected,
     })),
     previewLine: sketch.previewLine
       ? {
@@ -80,7 +79,7 @@ export function captureSketchSnapshot(sketch, service) {
     nextDimId: service._nextDimId,
     nextConstraintId: service._nextConstraintId,
     nextCircleId: service._nextCircleId,
-    nextRectangleId: service._nextRectangleId,
+    nextBezierId: service._nextBezierId,
   };
 }
 
@@ -129,7 +128,6 @@ export function restoreSketchSnapshot(snapshot, service) {
     constraint.isSelected = raw.isSelected;
     return constraint;
   });
-  const constraintById = new Map(constraints.map((c) => [c.id, c]));
 
   // Circles
   const circles = (snapshot.circles || []).map((raw) => {
@@ -139,16 +137,15 @@ export function restoreSketchSnapshot(snapshot, service) {
     return circle;
   });
 
-  // Rectangles — reconnect to restored points, lines, and constraints
-  const rectangles = (snapshot.rectangles || []).map((raw) => {
-    const center = raw.centerId != null ? pointById.get(raw.centerId) ?? null : null;
-    const corners = raw.cornerIds.map((id) => pointById.get(id)).filter(Boolean);
-    const edges = raw.edgeIds.map((id) => lineById.get(id)).filter(Boolean);
-    const constructionLines = raw.constructionLineIds.map((id) => lineById.get(id)).filter(Boolean);
-    const rectConstraints = raw.constraintIds.map((id) => constraintById.get(id)).filter(Boolean);
-    const rect = new SketchRectangle(raw.id, center, corners, edges, constructionLines, rectConstraints);
-    rect.isSelected = raw.isSelected;
-    return rect;
+  // Béziers — reconnect to restored control points
+  const beziers = (snapshot.beziers || []).map((raw) => {
+    const start = pointById.get(raw.startId) ?? new SketchPoint(raw.startId, 0, 0);
+    const control1 = pointById.get(raw.control1Id) ?? new SketchPoint(raw.control1Id, 0, 0);
+    const control2 = pointById.get(raw.control2Id) ?? new SketchPoint(raw.control2Id, 0, 0);
+    const end = pointById.get(raw.endId) ?? new SketchPoint(raw.endId, 0, 0);
+    const bezier = new SketchBezier(raw.id, start, control1, control2, end);
+    bezier.isSelected = raw.isSelected;
+    return bezier;
   });
 
   service._nextPointId = snapshot.nextPointId;
@@ -156,7 +153,7 @@ export function restoreSketchSnapshot(snapshot, service) {
   service._nextDimId = snapshot.nextDimId;
   service._nextConstraintId = snapshot.nextConstraintId;
   service._nextCircleId = snapshot.nextCircleId ?? 0;
-  service._nextRectangleId = snapshot.nextRectangleId ?? 0;
+  service._nextBezierId = snapshot.nextBezierId ?? 0;
 
   service._pendingStart = snapshot.pendingStartId != null
     ? pointById.get(snapshot.pendingStartId) ?? null
@@ -198,7 +195,7 @@ export function restoreSketchSnapshot(snapshot, service) {
   sketch.dimensions = dimensions;
   sketch.constraints = constraints;
   sketch.circles = circles;
-  sketch.rectangles = rectangles;
+  sketch.beziers = beziers;
   sketch.previewLine = previewLine;
   sketch.snapCandidate = snapCandidate;
 
@@ -221,7 +218,7 @@ export function snapshotsEqual(a, b) {
     && a.nextDimId === b.nextDimId
     && a.nextConstraintId === b.nextConstraintId
     && (a.nextCircleId ?? 0) === (b.nextCircleId ?? 0)
-    && (a.nextRectangleId ?? 0) === (b.nextRectangleId ?? 0)
+    && (a.nextBezierId ?? 0) === (b.nextBezierId ?? 0)
     && a.pendingStartId === b.pendingStartId
     && a.dimPendingAId === b.dimPendingAId
     && a.constraintPendingLineId === b.constraintPendingLineId
@@ -230,28 +227,27 @@ export function snapshotsEqual(a, b) {
     && arraysEqual(a.dimensions, b.dimensions, (d1, d2) => d1.id === d2.id && d1.aId === d2.aId && d1.bId === d2.bId && d1.offsetSign === d2.offsetSign && d1.drivenValue === d2.drivenValue && d1.isSelected === d2.isSelected)
     && arraysEqual(a.constraints, b.constraints, (c1, c2) => c1.id === c2.id && c1.type === c2.type && c1.pointAId === c2.pointAId && c1.pointBId === c2.pointBId && c1.lineAId === c2.lineAId && c1.lineBId === c2.lineBId && c1.isSelected === c2.isSelected)
     && arraysEqual(a.circles || [], b.circles || [], (c1, c2) => c1.id === c2.id && c1.centerId === c2.centerId && c1.radius === c2.radius && c1.isSelected === c2.isSelected)
-    && arraysEqual(a.rectangles || [], b.rectangles || [], (r1, r2) => r1.id === r2.id && r1.isSelected === r2.isSelected && arraysEqual(r1.cornerIds, r2.cornerIds, (x, y) => x === y))
+    && arraysEqual(a.beziers || [], b.beziers || [], (b1, b2) => b1.id === b2.id && b1.startId === b2.startId && b1.control1Id === b2.control1Id && b1.control2Id === b2.control2Id && b1.endId === b2.endId && b1.isSelected === b2.isSelected)
     && previewLinesEqual(a.previewLine, b.previewLine)
     && snapCandidatesEqual(a.snapCandidate, b.snapCandidate)
   );
 }
 
-function arraysEqual(a, b, compare) {
+function arraysEqual(a, b, eq) {
+  if (!a || !b) return a === b;
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (!compare(a[i], b[i])) return false;
+    if (!eq(a[i], b[i])) return false;
   }
   return true;
 }
 
 function previewLinesEqual(a, b) {
-  if (a === b) return true;
-  if (!a || !b) return false;
+  if (!a || !b) return a === b;
   return a.startId === b.startId && a.endX === b.endX && a.endY === b.endY;
 }
 
 function snapCandidatesEqual(a, b) {
-  if (a === b) return true;
-  if (!a || !b) return false;
+  if (!a || !b) return a === b;
   return a.id === b.id && a.x === b.x && a.y === b.y;
 }

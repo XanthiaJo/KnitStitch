@@ -41,5 +41,5 @@ export function getHasSelection(service) {
       || sketch.dimensions.some((d) => d.isSelected)
       || sketch.constraints.some((c) => c?.isSelected)
       || (sketch.circles || []).some((c) => c.isSelected)
-      || (sketch.rectangles || []).some((r) => r.isSelected);
+      || (sketch.beziers || []).some((b) => b.isSelected);
 }

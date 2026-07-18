@@ -11,30 +11,20 @@ export function deleteSketchSelection({ sketch, selectedPoints, selectedLines })
     }
   }
 
-  // Collect rectangles to remove (selected, or any component point/line selected)
-  const rectanglesToRemove = new Set();
-  for (const rect of sketch.rectangles || []) {
-    if (rect.isSelected) {
-      rectanglesToRemove.add(rect);
-    } else {
-      // Check if any component is in the removed/lines sets
-      const componentSelected =
-        (rect.center && removedPoints.has(rect.center)) ||
-        rect.corners.some((p) => removedPoints.has(p)) ||
-        rect.edges.some((l) => linesToRemove.has(l)) ||
-        rect.constructionLines.some((l) => linesToRemove.has(l));
-      if (componentSelected) {
-        rectanglesToRemove.add(rect);
-      }
+  // Collect Béziers to remove (selected, or any control point removed)
+  const beziersToRemove = new Set();
+  for (const bezier of sketch.beziers || []) {
+    if (bezier.isSelected ||
+        removedPoints.has(bezier.start) ||
+        removedPoints.has(bezier.control1) ||
+        removedPoints.has(bezier.control2) ||
+        removedPoints.has(bezier.end)) {
+      beziersToRemove.add(bezier);
+      removedPoints.add(bezier.start);
+      removedPoints.add(bezier.control1);
+      removedPoints.add(bezier.control2);
+      removedPoints.add(bezier.end);
     }
-  }
-
-  // Add rectangle components to the removal sets
-  for (const rect of rectanglesToRemove) {
-    if (rect.center) removedPoints.add(rect.center);
-    for (const p of rect.corners) removedPoints.add(p);
-    for (const l of rect.edges) linesToRemove.add(l);
-    for (const l of rect.constructionLines) linesToRemove.add(l);
   }
 
   for (const point of removedPoints) {
@@ -75,13 +65,13 @@ export function deleteSketchSelection({ sketch, selectedPoints, selectedLines })
 
   sketch.lines = sketch.lines.filter((line) => !linesToRemove.has(line));
   sketch.circles = (sketch.circles || []).filter((c) => !circlesToRemove.has(c));
-  sketch.rectangles = (sketch.rectangles || []).filter((r) => !rectanglesToRemove.has(r));
+  sketch.beziers = (sketch.beziers || []).filter((b) => !beziersToRemove.has(b));
 
   return {
     dimsToRemove,
     linesToRemove,
     removedPoints,
     circlesToRemove,
-    rectanglesToRemove,
+    beziersToRemove,
   };
 }
