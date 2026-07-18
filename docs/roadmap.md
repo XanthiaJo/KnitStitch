@@ -117,4 +117,4 @@ See [agents/roadmap.md](agents/roadmap.md) for the full spec.
 ## Refactoring
 
 - [ ] dofAnalyzer.js 
-- [ ] sketchLayer.js 
+- [x] sketchLayer.js 
