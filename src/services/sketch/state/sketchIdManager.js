@@ -14,7 +14,7 @@ export function seedIdCountersFromSketch(service) {
   service._nextDimId = nextId(sketch.dimensions);
   service._nextConstraintId = nextId(sketch.constraints);
   service._nextCircleId = nextId(sketch.circles);
-  service._nextRectangleId = nextId(sketch.rectangles);
+  service._nextBezierId = nextId(sketch.beziers);
 }
 export function assignConstraintIds(service) {
   for (const constraint of service.store.state.sketch.constraints || []) {

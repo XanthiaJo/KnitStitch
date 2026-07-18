@@ -22,6 +22,11 @@ export function removeOrphanPoint(sketch, point) {
     if (constraint?.pointA === point || constraint?.pointB === point) return false;
   }
 
+  for (const bezier of sketch.beziers || []) {
+    if (bezier.start === point || bezier.end === point ||
+        bezier.control1 === point || bezier.control2 === point) return false;
+  }
+
   const idx = sketch.points.indexOf(point);
   if (idx >= 0) {
     sketch.points.splice(idx, 1);

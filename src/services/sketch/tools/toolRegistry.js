@@ -5,6 +5,7 @@ import { DimensionTool } from './dimensionTool.js';
 import { LineTool } from './lineTool.js';
 import { CircleTool } from './circleTool.js';
 import { RectangleTool } from './rectangleTool.js';
+import { BezierTool } from './bezierTool.js';
 import { TemplateTool } from '../templates/templateTool.js';
 
 /**
@@ -21,6 +22,7 @@ export class ToolRegistry {
     this._anchorTool = new AnchorTool(service);
     this._circleTool = new CircleTool(service);
     this._rectangleTool = new RectangleTool(service);
+    this._bezierTool = new BezierTool(service);
     this.templateTool = new TemplateTool(service);
 
     this._tools = new Map([
@@ -31,6 +33,7 @@ export class ToolRegistry {
       [SketchTool.Anchor, this._anchorTool],
       [SketchTool.Circle, this._circleTool],
       [SketchTool.Rectangle, this._rectangleTool],
+      [SketchTool.Bezier, this._bezierTool],
     ]);
   }
 
@@ -68,6 +71,9 @@ export class ToolRegistry {
       case SketchTool.Rectangle:
         this._rectangleTool.onRectangleClick(position, modifiers);
         break;
+      case SketchTool.Bezier:
+        this._bezierTool.onBezierClick(position, modifiers);
+        break;
     }
   }
 
@@ -96,6 +102,9 @@ export class ToolRegistry {
         break;
       case SketchTool.Rectangle:
         this._rectangleTool.onRectangleMouseMove(position, modifiers);
+        break;
+      case SketchTool.Bezier:
+        this._bezierTool.onBezierMouseMove(position, modifiers);
         break;
     }
   }

@@ -109,6 +109,7 @@
           <button class="button button-sm" id="tool-construction-line">Construction</button>
           <button class="button button-sm" id="tool-circle">Circle</button>
           <button class="button button-sm" id="tool-rectangle">Rectangle</button>
+          <button class="button button-sm" id="tool-bezier">Bézier</button>
           <button class="button button-sm" disabled>Triangle</button>
         </div>
         <p class="caption">Basic geometric shapes for sketching.</p>
@@ -139,7 +140,12 @@
       <div class="container-section-body">
         <ul class="object-list" id="sketch-object-list">
         </ul>
-        <button class="button button-sm" id="sketch-copy-objects" style="margin-top:8px;">Copy objects</button>
+        <div class="toggle-group" style="margin-top:8px;">
+          <button class="button button-sm" id="sketch-copy-objects">Copy objects</button>
+          <button class="button button-sm" id="sketch-export-objects">Export</button>
+          <button class="button button-sm" id="sketch-import-objects">Import</button>
+          <input type="file" id="sketch-import-file" accept=".json,application/json" style="display:none;">
+        </div>
       </div>
     </div>
   </div>

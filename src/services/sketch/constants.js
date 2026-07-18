@@ -10,7 +10,8 @@ export const SketchTool = {
   Anchor: 'Anchor',
   Fill: 'Fill',
   Circle: 'Circle',
-  Rectangle: 'Rectangle'
+  Rectangle: 'Rectangle',
+  Bezier: 'Bezier'
 };
 
 export const ConstraintSubMode = {
@@ -37,5 +38,5 @@ export const SketchObjectKind = {
   Vertical: 'Vertical',
   Anchor: 'Anchor',
   Circle: 'Circle',
-  Rectangle: 'Rectangle',
+  Bezier: 'Bezier',
 };

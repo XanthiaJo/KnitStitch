@@ -7,7 +7,7 @@ export function syncSketchStateToStore(store) {
   store.set('sketch.lines', sketch.lines);
   store.set('sketch.points', sketch.points);
   store.set('sketch.circles', sketch.circles);
-  store.set('sketch.rectangles', sketch.rectangles);
+  store.set('sketch.beziers', sketch.beziers);
   store.set('sketch.objects', sketch.objects);
   store.set('sketch.previewLine', sketch.previewLine);
   store.set('sketch.snapCandidate', sketch.snapCandidate);
@@ -20,7 +20,7 @@ export function flushSketchArrays(service) {
   service.store.set('sketch.dimensions', [...sketch.dimensions]);
   service.store.set('sketch.constraints', [...sketch.constraints]);
   service.store.set('sketch.circles', [...sketch.circles]);
-  service.store.set('sketch.rectangles', [...sketch.rectangles]);
+  service.store.set('sketch.beziers', [...sketch.beziers]);
 }
 
 export function rebuildSketchObjects(service) {
