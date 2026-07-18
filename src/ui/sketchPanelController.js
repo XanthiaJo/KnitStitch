@@ -2,6 +2,7 @@ import { SketchTool } from '../services/sketch/sketchService.js';
 import { collectRefs, bindIfPresent, toggleActive } from './uiUtils.js';
 import { computeFilledCellsFromSketch } from '../services/sketch/fill/closedShapeFill.js';
 import { buildRowInstructions } from '../services/rowCountService.js';
+import { setupSketchImportExport } from './sketchImportExport.js';
 
 const REF_IDS = {
   sketchColorSelect: 'sketch-color',
@@ -11,11 +12,15 @@ const REF_IDS = {
   sketchDeleteBtn: 'sketch-delete',
   sketchObjectList: 'sketch-object-list',
   sketchCopyObjectsBtn: 'sketch-copy-objects',
+  sketchExportObjectsBtn: 'sketch-export-objects',
+  sketchImportObjectsBtn: 'sketch-import-objects',
+  sketchImportFileInput: 'sketch-import-file',
   sketchConstraintStatus: 'sketch-constraint-status',
   toolLineBtn: 'tool-line',
   toolConstructionLineBtn: 'tool-construction-line',
   toolCircleBtn: 'tool-circle',
   toolRectangleBtn: 'tool-rectangle',
+  toolBezierBtn: 'tool-bezier',
   toolSelectBtn: 'tool-select',
   toolAnchorBtn: 'tool-anchor',
   toolFillBtn: 'tool-fill',
@@ -61,6 +66,7 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
     toggleActive(refs.toolConstructionLineBtn, sketch.activeTool === SketchTool.ConstructionLine);
     toggleActive(refs.toolCircleBtn, sketch.activeTool === SketchTool.Circle);
     toggleActive(refs.toolRectangleBtn, sketch.activeTool === SketchTool.Rectangle);
+    toggleActive(refs.toolBezierBtn, sketch.activeTool === SketchTool.Bezier);
     toggleActive(refs.toolSelectBtn, sketch.activeTool === SketchTool.Select);
     toggleActive(refs.toolAnchorBtn, sketch.activeTool === SketchTool.Anchor);
     toggleActive(refs.toolFillBtn, sketch.activeTool === SketchTool.Fill);
@@ -147,30 +153,10 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
     sketchService.selectObjectByRef(refType, Number(rawRefId), event.ctrlKey);
   });
 
-  bindIfPresent(refs.sketchCopyObjectsBtn, 'click', async () => {
-    const sketch = store.state.sketch;
-    const data = {
-      points: sketch.points.map((p) => ({ id: p.id, x: p.x, y: p.y, isAnchor: p.isAnchor, isSelected: p.isSelected })),
-      lines: sketch.lines.map((l) => ({ id: l.id, startId: l.start?.id, endId: l.end?.id, isSelected: l.isSelected })),
-      dimensions: sketch.dimensions.map((d) => ({ id: d.id, aId: d.a?.id, bId: d.b?.id, value: d.value, drivenValue: d.drivenValue, kind: d.kind })),
-      constraints: sketch.constraints.map((c) => ({ id: c.id, type: c.type, pointAId: c.pointA?.id, pointBId: c.pointB?.id, lineAId: c.lineA?.id, lineBId: c.lineB?.id })),
-      objects: sketch.objects.map((o) => ({ kind: o.kind, refType: o.refType, refId: o.refId, label: o.label, isSelected: o.isSelected })),
-    };
-    const text = JSON.stringify(data, null, 2);
-    try {
-      await navigator.clipboard.writeText(text);
-      if (refs.sketchCopyObjectsBtn) refs.sketchCopyObjectsBtn.textContent = 'Copied!';
-      setTimeout(() => {
-        if (refs.sketchCopyObjectsBtn) refs.sketchCopyObjectsBtn.textContent = 'Copy objects';
-      }, 1500);
-    } catch (err) {
-      console.error('Failed to copy sketch objects:', err);
-      if (refs.sketchCopyObjectsBtn) refs.sketchCopyObjectsBtn.textContent = 'Copy failed';
-      setTimeout(() => {
-        if (refs.sketchCopyObjectsBtn) refs.sketchCopyObjectsBtn.textContent = 'Copy objects';
-      }, 1500);
-    }
-  });
+  // Copy / Export / Import buttons + hidden import file input are owned by
+  // sketchImportExport.js so the import flow (file reading, format check,
+  // mode-chooser modal, button feedback) stays out of this controller.
+  setupSketchImportExport({ refs, store, sketchService, documentObj });
 
   bindIfPresent(refs.toolLineBtn, 'click', () => {
     sketchService.activeTool = SketchTool.Line;
@@ -183,6 +169,9 @@ export function setupSketchPanel({ store, sketchService, documentObj = globalThi
   });
   bindIfPresent(refs.toolRectangleBtn, 'click', () => {
     sketchService.activeTool = SketchTool.Rectangle;
+  });
+  bindIfPresent(refs.toolBezierBtn, 'click', () => {
+    sketchService.activeTool = SketchTool.Bezier;
   });
   bindIfPresent(refs.toolSelectBtn, 'click', () => {
     sketchService.activeTool = SketchTool.Select;

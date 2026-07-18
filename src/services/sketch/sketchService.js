@@ -9,10 +9,18 @@ import { syncSketchStateToStore, rebuildSketchObjects, flushSketchArrays, setPre
 import { seedIdCountersFromSketch, assignConstraintIds } from './state/sketchIdManager.js';
 import { startDrag, onCanvasMouseUp, onSelectMouseMove } from './interactions/dragHandler.js';
 import { ensureOriginAnchor, undo, clear, cancelCurrentLine, recordSnapshot, exitToSelect } from './state/lifecycle.js';
-import { clearSelection, selectPoint, selectLine, selectDimension, selectConstraint, selectCircle, selectRectangle, selectObjectByRef } from './state/sketchSelection.js';
+import { clearSelection, selectPoint, selectLine, selectDimension, selectConstraint, selectCircle, selectBezier, selectObjectByRef } from './state/sketchSelection.js';
 import { deleteSelected, getHasSelection } from './state/selection.js';
 import { getIsActive, setIsActive, getActiveTool, setActiveTool, getConstraintSubMode, setConstraintSubMode, getStrokeColor, setStrokeColor, getStrokeThickness, setStrokeThickness, getPendingStart, setPendingStart, getTemplates } from './state/properties.js';
 import { applyTemplate, regenerateTemplate } from './templates/templateActions.js';
+import { serializePattern, parsePatternPayload, validatePatternPayload, remapSketchSnapshotForMerge } from './sketchSerialization.js';
+import { restoreSketchSnapshot } from './state/sketchSnapshot.js';
+import { SketchPoint } from '../../models/sketch/sketchPoint.js';
+import { SketchLine } from '../../models/sketch/sketchLine.js';
+import { SketchDimension } from '../../models/sketch/sketchDimension.js';
+import { SketchConstraint } from '../../models/sketch/sketchConstraint.js';
+import { SketchCircle } from '../../models/sketch/sketchCircle.js';
+import { SketchBezier } from '../../models/sketch/sketchBezier.js';
 
 export { ConstraintSubMode, SketchObjectKind, SketchTool } from './constants.js';
 
@@ -24,7 +32,7 @@ export class SketchService {
     this._nextDimId = 0;
     this._nextConstraintId = 0;
     this._nextCircleId = 0;
-    this._nextRectangleId = 0;
+    this._nextBezierId = 0;
     this._dimPendingA = null;
     this._constraintPendingLine = null;
     this._constraintPendingPoint = null;
@@ -74,6 +82,10 @@ export class SketchService {
 
   get _rectangleTool() {
     return this._toolRegistry.getTool(SketchTool.Rectangle);
+  }
+
+  get _bezierTool() {
+    return this._toolRegistry.getTool(SketchTool.Bezier);
   }
 
   get _templateTool() {
@@ -132,6 +144,141 @@ export class SketchService {
     return clear(this);
   }
 
+  /**
+   * Serializes the current sketch + gauge/grid context to a JSON string
+   * suitable for saving as a `.json` pattern file.
+   */
+  exportPattern() {
+    return JSON.stringify(serializePattern(this.store.state, this), null, 2);
+  }
+
+  /**
+   * Imports a pattern payload (as produced by `exportPattern` / parsePatternPayload).
+   *
+   * `mode` is 'replace' or 'merge':
+   *   - replace: clears the current sketch and loads the file's sketch + gauge/grid/filledCells.
+   *     An undo snapshot is recorded first so the import can be undone.
+   *   - merge: appends the file's sketch entities (with remapped ids) to the current sketch.
+   *     Gauge/grid/filledCells are unioned into the current state. An undo snapshot is recorded first.
+   *
+   * @param {object|string} payload - parsed payload object or raw JSON string
+   * @param {{ mode: 'replace' | 'merge' }} options
+   */
+  importPattern(payload, { mode } = {}) {
+    const parsed = typeof payload === 'string' ? parsePatternPayload(payload) : validatePatternPayload(payload);
+    if (mode !== 'replace' && mode !== 'merge') {
+      throw new Error(`Invalid import mode "${mode}". Expected "replace" or "merge".`);
+    }
+
+    this._recordSnapshot(mode === 'replace' ? 'Import pattern (replace)' : 'Import pattern (merge)');
+
+    const store = this.store;
+    const state = store.state;
+
+    if (mode === 'replace') {
+      // Replace gauge/grid scalars.
+      for (const key of ['cellWidthPx', 'cellHeightPx', 'stitchesPer4Inches', 'rowsPer4Inches', 'fillThreshold']) {
+        if (parsed.gauge && parsed.gauge[key] !== undefined) {
+          store.set(key, parsed.gauge[key]);
+        }
+      }
+      // Replace filledCells.
+      if (Array.isArray(parsed.filledCells)) {
+        store.set('filledCells', new Set(parsed.filledCells));
+      }
+      // Replace sketch. restoreSketchSnapshot rebuilds objects + flushes arrays.
+      restoreSketchSnapshot(parsed.sketch, this);
+      return;
+    }
+
+    // Merge: remap ids, then append to existing arrays.
+    const remapped = remapSketchSnapshotForMerge(parsed.sketch, this);
+    const sketch = state.sketch;
+
+    const pointById = new Map(sketch.points.map((p) => [p.id, p]));
+    const lineById = new Map(sketch.lines.map((l) => [l.id, l]));
+    const constraintById = new Map(sketch.constraints.map((c) => [c.id, c]));
+
+    // Build new instances from the remapped snapshot, resolving references
+    // against the freshly created entities (not the existing ones).
+    const newPoints = remapped.points.map((raw) => {
+      const p = new SketchPoint(raw.id, raw.x, raw.y);
+      p.isSelected = false; // never import selection state on merge
+      p.isAnchor = raw.isAnchor ?? false;
+      pointById.set(p.id, p);
+      return p;
+    });
+
+    const newLines = remapped.lines.map((raw) => {
+      const start = pointById.get(raw.startId) ?? new SketchPoint(raw.startId, 0, 0);
+      const end = pointById.get(raw.endId) ?? new SketchPoint(raw.endId, 0, 0);
+      const line = new SketchLine(raw.id, start, end, !!raw.isConstruction);
+      line.isSelected = false;
+      lineById.set(line.id, line);
+      return line;
+    });
+
+    const newDimensions = remapped.dimensions.map((raw) => {
+      const a = pointById.get(raw.aId) ?? new SketchPoint(raw.aId, 0, 0);
+      const b = pointById.get(raw.bId) ?? new SketchPoint(raw.bId, 0, 0);
+      const dim = new SketchDimension(raw.id, a, b, raw.offsetSign ?? 1);
+      if (raw.drivenValue !== null && raw.drivenValue !== undefined) {
+        if (raw.displayValue !== null && raw.displayValue !== undefined && raw.displaySuffix) {
+          dim.setDrivenDisplay(raw.drivenValue, raw.displayValue, raw.displaySuffix);
+        } else {
+          dim.setDrivenValue(raw.drivenValue);
+        }
+      }
+      dim.isSelected = false;
+      return dim;
+    });
+
+    const newConstraints = remapped.constraints.map((raw) => {
+      const pointA = raw.pointAId != null ? pointById.get(raw.pointAId) ?? null : null;
+      const pointB = raw.pointBId != null ? pointById.get(raw.pointBId) ?? null : null;
+      const lineA = raw.lineAId != null ? lineById.get(raw.lineAId) ?? null : null;
+      const lineB = raw.lineBId != null ? lineById.get(raw.lineBId) ?? null : null;
+      const constraint = new SketchConstraint(raw.type, pointA, pointB, lineA, lineB, raw.id);
+      constraint.isSelected = false;
+      constraintById.set(constraint.id, constraint);
+      return constraint;
+    });
+
+    const newCircles = remapped.circles.map((raw) => {
+      const center = pointById.get(raw.centerId) ?? new SketchPoint(raw.centerId, 0, 0);
+      const circle = new SketchCircle(raw.id, center, raw.radius);
+      circle.isSelected = false;
+      return circle;
+    });
+
+    const newBeziers = (remapped.beziers || []).map((raw) => {
+      const start = pointById.get(raw.startId) ?? new SketchPoint(raw.startId, 0, 0);
+      const control1 = pointById.get(raw.control1Id) ?? new SketchPoint(raw.control1Id, 0, 0);
+      const control2 = pointById.get(raw.control2Id) ?? new SketchPoint(raw.control2Id, 0, 0);
+      const end = pointById.get(raw.endId) ?? new SketchPoint(raw.endId, 0, 0);
+      const bezier = new SketchBezier(raw.id, start, control1, control2, end);
+      bezier.isSelected = false;
+      return bezier;
+    });
+
+    sketch.points = [...sketch.points, ...newPoints];
+    sketch.lines = [...sketch.lines, ...newLines];
+    sketch.dimensions = [...sketch.dimensions, ...newDimensions];
+    sketch.constraints = [...sketch.constraints, ...newConstraints];
+    sketch.circles = [...(sketch.circles || []), ...newCircles];
+    sketch.beziers = [...(sketch.beziers || []), ...newBeziers];
+
+    // Union filledCells.
+    if (Array.isArray(parsed.filledCells)) {
+      const merged = new Set(state.filledCells || []);
+      for (const key of parsed.filledCells) merged.add(key);
+      store.set('filledCells', merged);
+    }
+
+    this._rebuildObjects();
+    flushSketchArrays(this);
+  }
+
   cancelCurrentLine() {
     return cancelCurrentLine(this);
   }
@@ -172,8 +319,8 @@ export class SketchService {
     return selectCircle(this, circle, multiSelect);
   }
 
-  selectRectangle(rect, multiSelect = false) {
-    return selectRectangle(this, rect, multiSelect);
+  selectBezier(bezier, multiSelect = false) {
+    return selectBezier(this, bezier, multiSelect);
   }
 
   selectObjectByRef(refType, refId, multiSelect = false) {
