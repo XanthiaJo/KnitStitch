@@ -5,7 +5,7 @@ import { SketchLine } from '../models/sketch/sketchLine.js';
 import { SketchDimension } from '../models/sketch/sketchDimension.js';
 import { SketchConstraint } from '../models/sketch/sketchConstraint.js';
 import { SketchCircle } from '../models/sketch/sketchCircle.js';
-import { SketchRectangle } from '../models/sketch/sketchRectangle.js';
+import { SketchBezier } from '../models/sketch/sketchBezier.js';
 
 const STORAGE_KEY = 'knitstitch_state';
 const DEBOUNCE_MS = 300;
@@ -31,7 +31,7 @@ const PERSISTED_PATHS = new Set([
   'sketch.dimensions',
   'sketch.constraints',
   'sketch.circles',
-  'sketch.rectangles',
+  'sketch.beziers',
 ]);
 
 // Top-level sketch keys that are saved (used during hydration)
@@ -43,7 +43,7 @@ const PERSISTED_SKETCH_KEYS = new Set([
   'dimensions',
   'constraints',
   'circles',
-  'rectangles',
+  'beziers',
 ]);
 
 export class StorePersistence {
@@ -159,7 +159,7 @@ export class StorePersistence {
         dimensions: sketch.dimensions,
         constraints: sketch.constraints,
         circles: sketch.circles || [],
-        rectangles: sketch.rectangles || [],
+        beziers: sketch.beziers || [],
       },
     };
 
@@ -244,17 +244,20 @@ export class StorePersistence {
       return circle;
     });
 
-    // Rectangles — reconnect to restored points, lines, and constraints
-    const rawRectangles = Array.isArray(savedSketch.rectangles) ? savedSketch.rectangles : [];
-    const rectangles = rawRectangles.map((raw) => {
-      const center = raw.center?.id != null ? pointById.get(raw.center.id) ?? null : null;
-      const corners = (raw.corners || []).map((c) => pointById.get(c.id)).filter(Boolean);
-      const edges = (raw.edges || []).map((l) => lineById.get(l.id)).filter(Boolean);
-      const constructionLines = (raw.constructionLines || []).map((l) => lineById.get(l.id)).filter(Boolean);
-      const rectConstraints = (raw.constraints || []).map((c) => constraintById.get(c.id)).filter(Boolean);
-      const rect = new SketchRectangle(raw.id ?? 0, center, corners, edges, constructionLines, rectConstraints);
-      rect.isSelected = !!raw.isSelected;
-      return rect;
+    // Béziers — reconnect to restored control points
+    const rawBeziers = Array.isArray(savedSketch.beziers) ? savedSketch.beziers : [];
+    const beziers = rawBeziers.map((raw) => {
+      const start = pointById.get(raw.start?.id)
+        ?? new SketchPoint(raw.start?.id ?? 0, raw.start?.x ?? 0, raw.start?.y ?? 0);
+      const control1 = pointById.get(raw.control1?.id)
+        ?? new SketchPoint(raw.control1?.id ?? 0, raw.control1?.x ?? 0, raw.control1?.y ?? 0);
+      const control2 = pointById.get(raw.control2?.id)
+        ?? new SketchPoint(raw.control2?.id ?? 0, raw.control2?.x ?? 0, raw.control2?.y ?? 0);
+      const end = pointById.get(raw.end?.id)
+        ?? new SketchPoint(raw.end?.id ?? 0, raw.end?.x ?? 0, raw.end?.y ?? 0);
+      const bezier = new SketchBezier(raw.id ?? 0, start, control1, control2, end);
+      bezier.isSelected = !!raw.isSelected;
+      return bezier;
     });
 
     return {
@@ -264,7 +267,7 @@ export class StorePersistence {
       dimensions,
       constraints,
       circles,
-      rectangles,
+      beziers,
     };
   }
 }
