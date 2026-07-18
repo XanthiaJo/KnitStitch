@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculateDraggedRatios,
   calculatePanelHeights,
   clampPanelDragDelta,
 } from '../src/ui/panelResizer.js';
@@ -22,10 +23,8 @@ describe('panel resizer sizing', () => {
   it('keeps the layout full and stable after the lower card reaches minimum size', () => {
     const availableHeight = 700;
     const initialFlexible = [100, 120, 80, 38];
-    const movedDelta = clampPanelDragDelta(60, initialFlexible[2], initialFlexible[3]);
-    const movedFlexible = initialFlexible.slice();
-    movedFlexible[2] += movedDelta;
-    movedFlexible[3] -= movedDelta;
+    const moved = calculateDraggedRatios(initialFlexible, 2, 3, 60);
+    const movedFlexible = moved.flexible;
 
     const movedHeights = calculatePanelHeights(availableHeight, movedFlexible);
     expect(movedHeights.reduce((sum, height) => sum + height, 0) + 3 * 14).toBeCloseTo(availableHeight);

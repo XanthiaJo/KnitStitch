@@ -44,6 +44,23 @@ export function clampPanelDragDelta(requestedDelta, leftFlexible, rightFlexible)
   return Math.max(-leftFlexible, Math.min(rightFlexible, requestedDelta));
 }
 
+export function calculateDraggedRatios(
+  startFlexible,
+  leftIdx,
+  rightIdx,
+  requestedDelta,
+) {
+  const delta = clampPanelDragDelta(
+    requestedDelta,
+    startFlexible[leftIdx],
+    startFlexible[rightIdx],
+  );
+  const nextFlexible = startFlexible.slice();
+  nextFlexible[leftIdx] += delta;
+  nextFlexible[rightIdx] -= delta;
+  return { delta, flexible: nextFlexible, ratios: normalizeRatios(nextFlexible) };
+}
+
 export function setupPanelResizers({
   documentObj = globalThis.document,
   windowObj = globalThis.window,
@@ -218,7 +235,6 @@ export function setupPanelResizers({
     if (startFlex[leftIdx] + startFlex[rightIdx] <= 0) return;
 
     const startY = e.clientY;
-    const startRatios = ratios.slice();
 
     try {
       handle.setPointerCapture(e.pointerId);
@@ -230,19 +246,16 @@ export function setupPanelResizers({
 
     const onMove = (ev) => {
       const requestedDelta = ev.clientY - startY;
-      const delta = clampPanelDragDelta(
+      const { ratios: next } = calculateDraggedRatios(
+        startFlex,
+        leftIdx,
+        rightIdx,
         requestedDelta,
-        startFlex[leftIdx],
-        startFlex[rightIdx],
       );
-      const nextFlex = startFlex.slice();
-      nextFlex[leftIdx] += delta;
-      nextFlex[rightIdx] -= delta;
 
       // Ratios may legitimately reach zero: CSS minmax() still keeps the
       // corresponding card at MIN_CARD_PX, and allowing zero means the
       // pointer can stop exactly at the boundary without oscillating.
-      const next = normalize(nextFlex);
       ratiosByPanel.set(panel.id, next);
       applyRatios(panel);
     };
