@@ -73,6 +73,23 @@ function renderPerpendicularIcon(group, constraint, service) {
   group.add(iconGroup);
 }
 
+function lineMarkerPosition(line, offset = 12) {
+  const midX = (line.start.x + line.end.x) / 2;
+  const midY = (line.start.y + line.end.y) / 2;
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 0.001) return null;
+  return {
+    x: midX - (dy / length) * offset,
+    y: midY + (dx / length) * offset,
+    ux: dx / length,
+    uy: dy / length,
+    nx: -dy / length,
+    ny: dx / length,
+  };
+}
+
 function renderMidpointIcon(group, constraint, service) {
   const line = constraint.lineA;
   const point = constraint.pointA;
@@ -84,8 +101,10 @@ function renderMidpointIcon(group, constraint, service) {
     midX = ((line.start.x + line.end.x) / 2 + (lineB.start.x + lineB.end.x) / 2) / 2;
     midY = ((line.start.y + line.end.y) / 2 + (lineB.start.y + lineB.end.y) / 2) / 2;
   } else if (line && point) {
-    midX = (line.start.x + line.end.x) / 2;
-    midY = (line.start.y + line.end.y) / 2;
+    const marker = lineMarkerPosition(line);
+    if (!marker) return;
+    midX = marker.x;
+    midY = marker.y;
   } else {
     return;
   }
@@ -114,32 +133,61 @@ function renderMidpointIcon(group, constraint, service) {
 }
 
 function renderEqualIcon(group, constraint, service) {
-  const line = constraint.lineA;
-  if (!line) return;
-
-  const midX = (line.start.x + line.end.x) / 2;
-  const midY = (line.start.y + line.end.y) / 2;
+  const lines = [constraint.lineA, constraint.lineB].filter(Boolean);
   const color = iconColor(constraint);
   const iconSize = 6;
 
+  for (const line of lines) {
+    const marker = lineMarkerPosition(line);
+    if (!marker) continue;
+    const { x: iconX, y: iconY } = marker;
+    const iconGroup = new Konva.Group({ listening: true });
+    iconGroup.add(new Konva.Line({
+      points: [iconX - iconSize, iconY - 2, iconX + iconSize, iconY - 2],
+      stroke: color,
+      strokeWidth: 2,
+      lineCap: 'round',
+      listening: true,
+    }));
+    iconGroup.add(new Konva.Line({
+      points: [iconX - iconSize, iconY + 2, iconX + iconSize, iconY + 2],
+      stroke: color,
+      strokeWidth: 2,
+      lineCap: 'round',
+      listening: true,
+    }));
+    iconGroup.add(new Konva.Circle({
+      x: iconX,
+      y: iconY,
+      radius: 10,
+      fill: 'rgba(0,0,0,0)',
+      listening: true,
+    }));
+    attachConstraintClick(iconGroup, constraint, service);
+    group.add(iconGroup);
+  }
+}
+
+function renderHorizontalIcon(group, constraint, service) {
+  const line = constraint.lineA;
+  if (!line) return;
+  const marker = lineMarkerPosition(line);
+  if (!marker) return;
+
+  const color = iconColor(constraint);
+  const iconSize = 6;
   const iconGroup = new Konva.Group({ listening: true });
   iconGroup.add(new Konva.Line({
-    points: [midX - iconSize, midY - 2, midX + iconSize, midY - 2],
+    points: [marker.x - iconSize, marker.y, marker.x + iconSize, marker.y],
     stroke: color,
     strokeWidth: 2,
     lineCap: 'round',
     listening: true,
-  }));
-  iconGroup.add(new Konva.Line({
-    points: [midX - iconSize, midY + 2, midX + iconSize, midY + 2],
-    stroke: color,
-    strokeWidth: 2,
-    lineCap: 'round',
-    listening: true,
+    hitStrokeWidth: 14,
   }));
   iconGroup.add(new Konva.Circle({
-    x: midX,
-    y: midY,
+    x: marker.x,
+    y: marker.y,
     radius: 10,
     fill: 'rgba(0,0,0,0)',
     listening: true,
@@ -148,45 +196,29 @@ function renderEqualIcon(group, constraint, service) {
   group.add(iconGroup);
 }
 
-function renderHorizontalIcon(group, constraint, service) {
+function renderVerticalIcon(group, constraint, service) {
   const line = constraint.lineA;
   if (!line) return;
+  const marker = lineMarkerPosition(line);
+  if (!marker) return;
 
-  const midX = (line.start.x + line.end.x) / 2;
-  const midY = (line.start.y + line.end.y) / 2;
   const color = iconColor(constraint);
   const iconSize = 6;
-
   const iconGroup = new Konva.Group({ listening: true });
   iconGroup.add(new Konva.Line({
-    points: [midX - iconSize, midY, midX + iconSize, midY],
+    points: [marker.x, marker.y - iconSize, marker.x, marker.y + iconSize],
     stroke: color,
     strokeWidth: 2,
     lineCap: 'round',
     listening: true,
     hitStrokeWidth: 14,
   }));
-  attachConstraintClick(iconGroup, constraint, service);
-  group.add(iconGroup);
-}
-
-function renderVerticalIcon(group, constraint, service) {
-  const line = constraint.lineA;
-  if (!line) return;
-
-  const midX = (line.start.x + line.end.x) / 2;
-  const midY = (line.start.y + line.end.y) / 2;
-  const color = iconColor(constraint);
-  const iconSize = 6;
-
-  const iconGroup = new Konva.Group({ listening: true });
-  iconGroup.add(new Konva.Line({
-    points: [midX, midY - iconSize, midX, midY + iconSize],
-    stroke: color,
-    strokeWidth: 2,
-    lineCap: 'round',
+  iconGroup.add(new Konva.Circle({
+    x: marker.x,
+    y: marker.y,
+    radius: 10,
+    fill: 'rgba(0,0,0,0)',
     listening: true,
-    hitStrokeWidth: 14,
   }));
   attachConstraintClick(iconGroup, constraint, service);
   group.add(iconGroup);
@@ -196,14 +228,25 @@ function renderCoincidentIcon(group, constraint, service) {
   const point = constraint.pointA;
   if (!point) return;
 
+  const line = constraint.lineA;
+  const lineMid = line && {
+    x: (line.start.x + line.end.x) / 2,
+    y: (line.start.y + line.end.y) / 2,
+  };
+  const awayX = lineMid ? point.x - lineMid.x : 1;
+  const awayY = lineMid ? point.y - lineMid.y : -1;
+  const awayLength = Math.hypot(awayX, awayY) || 1;
+  const iconX = point.x + (awayX / awayLength) * 12;
+  const iconY = point.y + (awayY / awayLength) * 12;
+
   const color = iconColor(constraint);
   const iconSize = 6;
 
   const iconGroup = new Konva.Group({ listening: true });
-  // Bullseye-style circle at the coincident point
+  // Bullseye-style circle offset from the coincident point
   iconGroup.add(new Konva.Circle({
-    x: point.x,
-    y: point.y,
+    x: iconX,
+    y: iconY,
     radius: iconSize,
     stroke: color,
     strokeWidth: 2,
@@ -211,8 +254,8 @@ function renderCoincidentIcon(group, constraint, service) {
     listening: true,
   }));
   iconGroup.add(new Konva.Circle({
-    x: point.x,
-    y: point.y,
+    x: iconX,
+    y: iconY,
     radius: 10,
     fill: 'rgba(0,0,0,0)',
     listening: true,
@@ -225,18 +268,10 @@ function renderParallelIcon(group, constraint, service) {
   const line = constraint.lineA;
   if (!line) return;
 
-  const midX = (line.start.x + line.end.x) / 2;
-  const midY = (line.start.y + line.end.y) / 2;
-  const dx = line.end.x - line.start.x;
-  const dy = line.end.y - line.start.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 0.001) return;
+  const marker = lineMarkerPosition(line, 16);
+  if (!marker) return;
 
-  // Unit direction along the line, and perpendicular offset for the two ticks
-  const ux = dx / len;
-  const uy = dy / len;
-  const nx = -uy;
-  const ny = ux;
+  const { x: midX, y: midY, ux, uy, nx, ny } = marker;
   const color = iconColor(constraint);
   const tickHalf = 5;   // half-length of each tick along the line direction
   const gap = 3;        // perpendicular offset of each tick from the midpoint
