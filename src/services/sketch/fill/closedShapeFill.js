@@ -4,10 +4,10 @@
  * Given the current sketch lines, finds closed loops (cycles) in the line
  * graph and determines which grid cells are 50%+ inside any closed polygon.
  *
- * A cell is counted as filled when at least half of its area falls inside a
- * closed shape.  This naturally handles cells that a line crosses: if the
- * line cuts a cell so that 50%+ of the cell is inside the shape, the whole
- * cell is filled.
+ * A cell is counted as filled when the configured fraction of its area falls
+ * inside a closed shape. Coverage is calculated by clipping each polygon to
+ * the cell rectangle rather than sampling points, which keeps symmetric
+ * shapes symmetric at any grid alignment.
  */
 
 const EPSILON = 0.01;
@@ -51,30 +51,58 @@ export function computeFilledCellsFromSketch(lines, cellW, cellH, fillThreshold 
   const maxRow = Math.ceil(maxY / cellH);
 
   const filled = new Set();
-  const samples = 4;
-  const total = samples * samples;
-  const required = Math.ceil(total * fillThreshold); // Use configurable threshold instead of 50%
+  const cellArea = cellW * cellH;
+  const requiredArea = cellArea * Math.max(0, Math.min(1, fillThreshold));
 
   for (let r = minRow; r <= maxRow; r++) {
     for (let c = minCol; c <= maxCol; c++) {
       const x0 = c * cellW;
       const y0 = r * cellH;
-      let insideCount = 0;
-      for (let sy = 0; sy < samples && insideCount < required; sy++) {
-        for (let sx = 0; sx < samples; sx++) {
-          const px = x0 + (sx + 0.5) * cellW / samples;
-          const py = y0 + (sy + 0.5) * cellH / samples;
-          if (pointInAnyPolygon(px, py, polygons)) {
-            insideCount++;
-          }
-        }
-      }
-      if (insideCount >= required) {
+      const coveredArea = polygons.reduce((largest, polygon) => {
+        const clipped = clipPolygonToRect(polygon, x0, y0, x0 + cellW, y0 + cellH);
+        return Math.max(largest, polygonArea(clipped));
+      }, 0);
+
+      if (coveredArea + EPSILON >= requiredArea) {
         filled.add(`${r},${c}`);
       }
     }
   }
+
+  // Rasterisation can otherwise choose one side of a mathematically symmetric
+  // edge when both mirrored cells are near the threshold. Mirror symmetric
+  // polygons after thresholding so their knitted cell pattern is symmetric.
+  for (const polygon of polygons) {
+    const axis = verticalSymmetryAxis(polygon);
+    if (axis === null) continue;
+    const mirrored = new Set(filled);
+    for (const key of filled) {
+      const [r, c] = key.split(',').map(Number);
+      const reflectedCenter = (2 * axis - (c + 0.5) * cellW) / cellW;
+      const reflectedColumn = Math.floor(reflectedCenter);
+      mirrored.add(`${r},${reflectedColumn}`);
+    }
+    for (const key of mirrored) filled.add(key);
+  }
+
   return filled;
+}
+
+function verticalSymmetryAxis(polygon) {
+  if (polygon.length < 3) return null;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const point of polygon) {
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+  }
+  const axis = (minX + maxX) / 2;
+  const tolerance = EPSILON * 2;
+  const hasMirror = (point) => polygon.some((candidate) =>
+    Math.abs(candidate.x - (2 * axis - point.x)) <= tolerance
+      && Math.abs(candidate.y - point.y) <= tolerance
+  );
+  return polygon.every(hasMirror) ? axis : null;
 }
 
 /**
@@ -166,6 +194,63 @@ function bfsShortestPath(adj, fromKey, toKey, excludedLine) {
     }
   }
   return null;
+}
+
+/**
+ * Clip a polygon against the four half-planes that form a cell rectangle.
+ */
+function clipPolygonToRect(polygon, minX, minY, maxX, maxY) {
+  let clipped = polygon;
+  const edges = [
+    { inside: (p) => p.x >= minX, intersect: (a, b) => intersectVertical(a, b, minX) },
+    { inside: (p) => p.x <= maxX, intersect: (a, b) => intersectVertical(a, b, maxX) },
+    { inside: (p) => p.y >= minY, intersect: (a, b) => intersectHorizontal(a, b, minY) },
+    { inside: (p) => p.y <= maxY, intersect: (a, b) => intersectHorizontal(a, b, maxY) },
+  ];
+
+  for (const edge of edges) {
+    if (clipped.length === 0) break;
+    const output = [];
+    let previous = clipped[clipped.length - 1];
+    let previousInside = edge.inside(previous);
+
+    for (const current of clipped) {
+      const currentInside = edge.inside(current);
+      if (currentInside !== previousInside) {
+        output.push(edge.intersect(previous, current));
+      }
+      if (currentInside) output.push(current);
+      previous = current;
+      previousInside = currentInside;
+    }
+    clipped = output;
+  }
+  return clipped;
+}
+
+function intersectVertical(a, b, x) {
+  const denominator = b.x - a.x;
+  if (Math.abs(denominator) < EPSILON) return { x, y: a.y };
+  const t = (x - a.x) / denominator;
+  return { x, y: a.y + (b.y - a.y) * t };
+}
+
+function intersectHorizontal(a, b, y) {
+  const denominator = b.y - a.y;
+  if (Math.abs(denominator) < EPSILON) return { x: a.x, y };
+  const t = (y - a.y) / denominator;
+  return { x: a.x + (b.x - a.x) * t, y };
+}
+
+function polygonArea(polygon) {
+  if (polygon.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+    area += current.x * next.y - next.x * current.y;
+  }
+  return Math.abs(area) / 2;
 }
 
 /**

@@ -187,6 +187,53 @@ describe('computeFilledCellsFromSketch', () => {
     expect(filled.size).toBe(100);
   });
 
+  it('keeps a centered triangle symmetric across the grid', () => {
+    const lines = [
+      line(0, 0, 40, 0),
+      line(40, 0, 20, 40),
+      line(20, 40, 0, 0),
+    ];
+    const filled = computeFilledCellsFromSketch(lines, 10, 10, 0.3);
+    expect([...filled].sort()).toEqual([
+      '0,0', '0,1', '0,2', '0,3',
+      '1,1', '1,2',
+      '2,1', '2,2',
+    ]);
+  });
+
+  it('mirrors cells for a symmetric triangle whose axis is off-grid', () => {
+    const lines = [
+      line(3, 0, 43, 0),
+      line(43, 0, 23, 40),
+      line(23, 40, 3, 0),
+    ];
+    const filled = computeFilledCellsFromSketch(lines, 10, 10, 0.3);
+    const rows = new Map();
+    for (const key of filled) {
+      const [row, column] = key.split(',').map(Number);
+      if (!rows.has(row)) rows.set(row, []);
+      rows.get(row).push(column);
+    }
+    for (const columns of rows.values()) {
+      expect(columns.sort((a, b) => a - b)).toEqual(columns.slice().sort((a, b) => a - b).reverse().map((column) => {
+        const min = Math.min(...columns);
+        const max = Math.max(...columns);
+        return min + max - column;
+      }).sort((a, b) => a - b));
+    }
+  });
+
+  it('uses exact area for the configured threshold', () => {
+    const lines = [
+      line(2, 2, 8, 2),
+      line(8, 2, 8, 8),
+      line(8, 8, 2, 8),
+      line(2, 8, 2, 2),
+    ];
+    expect(computeFilledCellsFromSketch(lines, 10, 10, 0.3).has('0,0')).toBe(true);
+    expect(computeFilledCellsFromSketch(lines, 10, 10, 0.6).has('0,0')).toBe(false);
+  });
+
   it('returns empty set for invalid cell dimensions', () => {
     const lines = [
       line(0, 0, 100, 0),
