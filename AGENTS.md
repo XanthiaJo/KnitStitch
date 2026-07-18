@@ -127,6 +127,10 @@ The page has four workspaces:
 
 The Sketch workspace is the one governed by the Fusion-style rules above.
 
+## UI Layout Conventions
+
+By default, every headed section in the content column should live inside its own `.panel` (typically `.panel.panel--padded`) which is wrapped by a `.container`. Only deviate when a design explicitly calls for something different. The markdown doc pages (ReadMe, Roadmap) follow this by splitting each rendered heading and its following content into a separate panel.
+
 ## Grid Model
 
 The grid is infinite and viewport-culled. There is no fixed grid size.
@@ -157,6 +161,9 @@ Each colour family has its own selection highlight instead of a single site-wide
 - stage layer order is grid -> overlay -> sketch
 
 ## SolveSpace WASM Solver Loading
+
+Historical note: the paragraphs below describe the old single-file build. The
+current committed solver is the rebuilt `slvs.js` + `slvs.wasm` pair.
 
 `public/wasm/slvs.js` (~6 MB) is the SolveSpace constraint solver compiled to
 WebAssembly. Loading/instantiating it causes a long, mostly-unavoidable
@@ -234,6 +241,17 @@ following reduces its *impact* without reducing its *duration*:
   window.__knitstitchSketchService?._slvsAdapter?.ready)` wait in
   `e2e/helpers/sketchHelpers.js`'s `openSketch()`, rather than by changing
   app behavior to suit tests.
+
+### Current artifact shape
+
+The committed solver build is the rebuilt two-file output:
+
+- `public/wasm/slvs.js`
+- `public/wasm/slvs.wasm`
+
+If you rebuild the solver again, keep `-s SINGLE_FILE=1` removed in
+`solver-wasm/src/slvs/CMakeLists.txt` so the loader continues to fetch the
+`.wasm` file next to the JS bundle.
 
 ## Testing Rules
 

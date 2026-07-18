@@ -41,7 +41,7 @@ Companion to the human-readable plan in [../roadmap.md](../roadmap.md#solvespace
 
 - **No published npm package.** However, as of December 2024 (PR #1343, commit `a208201c`), SolveSpace master includes a stateful C library (`src/slvs/lib.cpp`), embind JS bindings (`src/slvs/jslib.cpp`), a CMake `slvs-wasm` target (`src/slvs/CMakeLists.txt`), and a CI build script (`.github/scripts/build-wasmlib.sh`). We fork `solvespace/solvespace` directly and build the existing target — no custom bindings or CMake glue needed.
 - **GPL-3.0 licensing.** SolveSpace is GPL-3.0-or-later with no linking exception. The compiled `slvs.wasm` is a derivative work, so distributing it inside KnitStitch makes the whole app GPL-3.0-or-later. KnitStitch has adopted GPL-3.0-or-later accordingly (see `LICENSE`).
-- **6.2 MB single-file JS** first-load cost (WASM embedded as base64 via `-s SINGLE_FILE=1`) — mitigated by lazy loading only when `solverBackend === 'slvs'`.
+- **Separate JS/WASM pair** first-load cost (`slvs.js` plus `slvs.wasm`) — mitigated by lazy loading only when `solverBackend === 'slvs'`.
 - **Coordinate system mismatch** — SolveSpace works in arbitrary units in a 2D workplane; we solve in inches and convert to/from pixels via the gauge.
 
 ### Fork strategy
@@ -64,7 +64,7 @@ The fork's only modification is deleting the stale `cmake/Platform/Emscripten.cm
 | Submodule | `git submodule add https://github.com/XanthiaJo/SolverWasm.git vendor/solver-wasm` |
 | Submodules | `cd vendor/solver-wasm && git submodule update --init extlib/eigen extlib/mimalloc` (only solver deps, not GUI) |
 | Build script | `scripts/build-slvs.mjs` drives: `emsdk install/activate latest` → `cd vendor/solver-wasm && mkdir build-wasmlib && cd build-wasmlib && emcmake cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_GUI=OFF -DENABLE_CLI=OFF -DENABLE_TESTS=OFF -DENABLE_COVERAGE=OFF -DENABLE_OPENMP=OFF -DFORCE_VENDORED_Eigen3=ON -DENABLE_LTO=ON && cmake --build . --target slvs-wasm` |
-| Artifacts | `slvs.js` (~6.2 MB, single-file with embedded WASM via `-s SINGLE_FILE=1`) copied to `public/wasm/` |
+| Artifacts | `slvs.js` + `slvs.wasm` copied to `public/wasm/` |
 | Commit strategy | Commit the built `.wasm` + `.js` into the repo so the app builds without Emscripten installed; document the rebuild step in `AGENTS.md` |
 | Vite | Verify `public/wasm/*.wasm` is served with `application/wasm` MIME (Vite default for `public/`) |
 | License | KnitStitch adopts GPL-3.0-or-later (see `LICENSE`); `package.json` `license` field set to `"GPL-3.0-or-later"` |
@@ -254,7 +254,7 @@ The native path stays the default; the WASM only downloads when the flag flips.
 |---|---|---|
 | 1 | `vendor/solver-wasm` (submodule, fork of `solvespace/solvespace`) | Add |
 | 1 | `scripts/build-slvs.mjs` | New |
-| 1 | `public/wasm/slvs.js` | New (built artifact, ~6.2 MB single-file) |
+| 1 | `public/wasm/slvs.js` + `public/wasm/slvs.wasm` | New (built artifacts) |
 | 1 | `LICENSE` | New — GPL-3.0-or-later (required by SolveSpace licensing) |
 | 1 | `package.json` | Add `"license": "GPL-3.0-or-later"` |
 | 1 | `AGENTS.md` | Document Emscripten build + GPL-3.0 license note |

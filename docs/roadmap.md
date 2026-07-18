@@ -4,7 +4,7 @@ A high-level feature roadmap organised by area. Checked items are shipped; unche
 
 For implementation details, internal notes, and refactoring phases see [agents/roadmap.md](agents/roadmap.md).
 
-_Last updated: 2026-07-15_
+_Last updated: 2026-07-18_
 
 ---
 
@@ -18,7 +18,7 @@ solver stays default until the WASM backend passes the existing e2e suite.
 Distributing the compiled solver inside KnitStitch makes the whole app
 GPL-3.0-or-later. KnitStitch has adopted GPL-3.0-or-later accordingly.
 
-- [x] Phase 1 — Fork `solvespace/solvespace` → `XanthiaJo/SolverWasm`, build the `slvs-wasm` target, ship `slvs.js` as a static asset (done: fork at https://github.com/XanthiaJo/SolverWasm, build verified passing README test case)
+- [x] Phase 1 — Fork `solvespace/solvespace` → `XanthiaJo/SolverWasm`, build the `slvs-wasm` target, ship `slvs.js` + `slvs.wasm` as static assets (done: fork at https://github.com/XanthiaJo/SolverWasm, rebuild verified and copied into `public/wasm/`)
 - [ ] Phase 2 — Adapter layer translating the sketch model to SolveSpace (real-world units via gauge)
 - [ ] Phase 3 — Feature flag (`solverBackend: 'native' | 'slvs'`) with lazy WASM loading
 - [ ] Phase 4 — Validate via e2e, flip default, delete the old native solver modules
@@ -104,7 +104,7 @@ See [agents/roadmap.md](agents/roadmap.md) for the full spec.
 
 - [x] E2E Playwright tests for sketch constraints and interactions
 - [x] Unit tests for pure geometry, state, and solver helpers
-- [x] DDEV-based E2E setup
+- [x] DDEV-based E2E setup 
 - [x] Midpoint constraint creation E2E tests
 - [ ] Equal-length constraint creation E2E tests
 - [ ] Zoom/pan unit and E2E tests
@@ -114,7 +114,7 @@ See [agents/roadmap.md](agents/roadmap.md) for the full spec.
 
 ---
 
-## Architecture
+## Refactoring
 
-- [x] Slim `sketchService.js` into a thin coordinator with a tool registry
-- [x] Split `mainUi.js` into focused panel controllers
+- [ ] dofAnalyzer.js 
+- [ ] sketchLayer.js 
