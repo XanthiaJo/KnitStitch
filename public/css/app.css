@@ -814,6 +814,7 @@ select:focus {
 .workspace-panel {
     display: none;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 
@@ -827,6 +828,79 @@ select:focus {
 
 .workspace-panel.active {
     align-content: start;
+}
+
+/* Resizable panel layout — applied by src/ui/panelResizer.js.
+   The grid gap is collapsed to 0 because the .panel-resizer handle track
+   owns the spacing between cards. Card bodies scroll internally so that
+   growing one card shrinks its neighbours instead of pushing the whole
+   sidebar scroll. */
+.workspace-panel.is-resizable {
+    gap: 0;
+    min-height: 0;
+    align-content: stretch;
+    overflow-y: auto;
+}
+
+.workspace-panel.is-resizable > .container-section--headed,
+.workspace-panel.is-resizable > .panel {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.workspace-panel.is-resizable > .container-section--headed > .container-section-body,
+.workspace-panel.is-resizable > .panel > .container-section-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* The panel body is the single scroll container for resized cards. */
+.workspace-panel.is-resizable .object-list {
+    max-height: none;
+    overflow-y: visible;
+}
+
+/* Drag handle between adjacent cards. The handle track is 14px tall (the
+   same spacing the grid gap used to provide) with a thin grab line in the
+   center that highlights on hover/active. */
+.panel-resizer {
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    flex: 0 0 14px;
+}
+
+.panel-resizer::before {
+    content: '';
+    width: 36px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.15s ease;
+}
+
+.panel-resizer:hover::before,
+.panel-resizer:focus-visible::before,
+.panel-resizer.is-active::before {
+    background: var(--primary);
+    outline: none;
+}
+
+.panel-resizer:focus-visible {
+    outline: none;
+}
+
+body.is-panel-resizing {
+    cursor: row-resize;
+    user-select: none;
 }
 
 /* Object list */
@@ -963,6 +1037,56 @@ select:focus {
 #dim-edit-overlay .dim-edit-overlay__button--primary {
     background: var(--primary) !important;
     color: white !important;
+}
+
+/* Import pattern chooser overlay */
+.sketch-import-chooser {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.sketch-import-chooser__panel {
+    max-width: 380px;
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--tertiary);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    color: var(--body);
+}
+
+.sketch-import-chooser__title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.sketch-import-chooser__hint {
+    font-size: 12px;
+    color: var(--body-light);
+    line-height: 1.4;
+    margin-bottom: 14px;
+}
+
+.sketch-import-chooser__controls {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.sketch-import-chooser__button--replace {
+    background: var(--primary) !important;
+    color: white !important;
+}
+
+.sketch-import-chooser__button--merge {
+    background: var(--secondary-dark) !important;
+    color: var(--primary-dark) !important;
 }
 
 /* Color picker */
