@@ -331,6 +331,15 @@ td {
     color: var(--primary);
 }
 
+.global-bar-link--right {
+    margin-left: auto;
+}
+
+.global-bar-link[aria-disabled="true"] {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
 /* ==========================================================================
    5. Site Header & Navigation
    ========================================================================== */
@@ -564,8 +573,7 @@ select:focus {
    9. Container Sections
    ========================================================================== */
 .container-sections,
-.changelog-types-sidebar,
-.workspace-panel.active {
+.changelog-types-sidebar {
     display: grid;
     gap: 14px;
 }
@@ -574,8 +582,7 @@ select:focus {
 .panel,
 .container-section--headed,
 .ribbon-bar,
-.zoom-control,
-.canvas-wrapper {
+.zoom-control {
     background: var(--tertiary);
     border: 1px solid var(--border);
 }
@@ -584,6 +591,10 @@ select:focus {
     padding: 0;
     border-radius: 6px;
     overflow: hidden;
+}
+
+.floating-panel-body > .container-section--headed + .container-section--headed {
+    margin-top: 14px;
 }
 
 .container-section-header {
@@ -618,7 +629,6 @@ select:focus {
 .page-knitstitch > .shell,
 #app-container,
 .canvas-area,
-.sidebar,
 #dim-edit-overlay,
 .boot-loading-overlay,
 .container-section--headed,
@@ -639,10 +649,45 @@ select:focus {
     flex-shrink: 0;
 }
 
+.page-knitstitch .site-footer {
+    padding: 4px 0;
+}
+
 .page-knitstitch > .shell {
     flex: 1;
     min-height: 0;
-    margin-bottom: 16px;
+    padding: 14px 0;
+}
+
+.editor-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--tertiary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+body.is-canvas-fullscreen .editor-panel {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Fullscreen mode — hide top headers and expand to full width */
+body.is-canvas-fullscreen .global-bar,
+body.is-canvas-fullscreen .site-header {
+    display: none;
+}
+
+body.is-canvas-fullscreen > .shell {
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 #app-container {
@@ -653,12 +698,14 @@ select:focus {
 /* Ribbon bar */
 .ribbon-bar {
     justify-content: center;
-    border-radius: 8px;
-    margin: 14px 0;
+    border-radius: 0;
+    margin: 0;
     padding: 8px 12px;
     gap: 8px;
     flex-shrink: 0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: none;
+    border-bottom: 1px solid var(--border);
 }
 
 .ribbon-modes {
@@ -711,11 +758,75 @@ select:focus {
     border-radius: 2px 2px 0 0;
 }
 
-/* Workspace grid — uses .page-layout with a wider sidebar */
-#app-container .page-layout {
+/* Workspace layout: vertical tabs on the left, canvas filling the rest */
+.workspace-layout {
+    display: flex;
+    flex-direction: row;
     flex: 1;
     min-height: 0;
+}
+
+.ribbon-bar--workspace {
+    flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
+    width: 64px;
+    padding: 6px 4px;
+    gap: 4px;
+    border: none;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    box-shadow: none;
+}
+
+.ribbon-bar--workspace .ribbon-modes {
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+}
+
+.ribbon-bar--workspace .workspace-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 2px;
+    border-radius: 5px;
+    gap: 3px;
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+.ribbon-bar--workspace .workspace-btn .icon {
+    font-size: 18px;
+    width: 100%;
+    text-align: center;
+}
+
+.ribbon-bar--workspace .workspace-btn .label {
+    font-size: 9px;
+    line-height: 1.1;
+    max-width: 100%;
+    width: 100%;
+    text-align: center;
+}
+
+.ribbon-bar--workspace .workspace-btn.active::after {
+    left: 0;
+    right: auto;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    height: auto;
+    border-radius: 0 2px 2px 0;
+}
+
+/* Canvas area — fills the remaining width of the workspace layout */
+.workspace-layout .canvas-area--full {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
 }
 
 .canvas-area {
@@ -725,13 +836,16 @@ select:focus {
 
 .canvas-wrapper {
     flex: 1;
-    border-radius: 8px;
+    border-radius: 0;
     overflow: auto;
-    padding: 12px;
+    padding: 0;
+    border: none;
+    background: transparent;
 }
 
 .canvas-content {
-    min-height: 400px;
+    flex: 1;
+    min-height: 0;
     justify-content: center;
 }
 
@@ -783,6 +897,241 @@ select:focus {
     margin: 0 2px;
 }
 
+/* ==========================================================================
+   Tool ribbon — contextual toolbar below the workspace ribbon (Fusion 360 style)
+   ========================================================================== */
+.ribbon-bar--tools {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    justify-content: center;
+    border-radius: 0;
+    margin: 0;
+    padding: 6px 12px;
+    gap: 0;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    overflow-x: auto;
+    background: var(--tertiary);
+    border-bottom: 1px solid var(--border);
+    z-index: 150;
+}
+
+.ribbon-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px;
+}
+
+.ribbon-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--body-light);
+    user-select: none;
+}
+
+.ribbon-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.ribbon-buttons--settings {
+    gap: 6px;
+}
+
+.ribbon-divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--border);
+    margin: 2px 4px;
+}
+
+/* Tool buttons — icon + text, compact */
+.tool-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    min-width: 44px;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--body);
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.tool-btn:hover {
+    background: var(--secondary-light);
+    border-color: var(--border);
+}
+
+.tool-btn:active {
+    background: var(--primary-light);
+}
+
+.tool-btn.button-primary,
+.tool-btn.is-active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary-dark);
+}
+
+.tool-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tool-btn--sm {
+    min-width: 36px;
+    padding: 4px 4px;
+}
+
+.tool-icon {
+    font-size: 16px;
+    line-height: 1;
+    width: 100%;
+    text-align: center;
+}
+
+.tool-label {
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* Compact form controls in the ribbon */
+.ribbon-select {
+    padding: 3px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--tertiary);
+    color: var(--body);
+}
+
+.ribbon-slider-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ribbon-slider {
+    width: 60px;
+}
+
+.ribbon-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ribbon-checkbox input {
+    margin: 0;
+}
+
+.ribbon-status {
+    font-size: 11px;
+    color: #c0392b;
+    align-self: center;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Floating panels — workspace-specific content overlaying the canvas
+   ========================================================================== */
+.floating-panel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: var(--floating-panel-width, 300px);
+    max-height: calc(100% - 24px);
+    display: none;
+    flex-direction: column;
+    background: var(--tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 200;
+    overflow: hidden;
+}
+
+.floating-panel-resizer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 201;
+    background: transparent;
+    border-radius: 8px 0 0 8px;
+}
+
+.floating-panel-resizer:hover,
+.floating-panel-resizer.is-active {
+    background: var(--primary-light);
+}
+
+.floating-panel.active {
+    display: flex;
+}
+
+.floating-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--tertiary-dark);
+    cursor: pointer;
+    user-select: none;
+}
+
+.floating-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--body);
+}
+
+.floating-panel-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--body-light);
+    padding: 0;
+    line-height: 1;
+}
+
+.floating-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.floating-panel.collapsed .floating-panel-body {
+    display: none;
+}
+
+.floating-panel.collapsed .floating-panel-toggle {
+    transform: rotate(-90deg);
+}
+
 /* Measurement derived-values list */
 .measurement-derived {
     list-style: none;
@@ -804,103 +1153,10 @@ select:focus {
     color: var(--primary-dark);
 }
 
-/* Sidebar */
-.sidebar {
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-}
-
+/* Workspace panels are now floating panels (see .floating-panel rules).
+   The .workspace-panel class is retained for active/inactive toggling. */
 .workspace-panel {
     display: none;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-}
-
-#panel-row-counts {
-    overflow-y: visible !important;
-}
-
-#panel-row-counts .container-section-body {
-    overflow: visible !important;
-}
-
-.workspace-panel.active {
-    align-content: start;
-}
-
-/* Resizable panel layout — applied by src/ui/panelResizer.js.
-   The grid gap is collapsed to 0 because the .panel-resizer handle track
-   owns the spacing between cards. Card bodies scroll internally so that
-   growing one card shrinks its neighbours instead of pushing the whole
-   sidebar scroll. */
-.workspace-panel.is-resizable {
-    gap: 0;
-    min-height: 0;
-    align-content: stretch;
-    overflow-y: auto;
-}
-
-.workspace-panel.is-resizable > .container-section--headed,
-.workspace-panel.is-resizable > .panel {
-    min-height: 0;
-    overflow: hidden;
-}
-
-.workspace-panel.is-resizable > .container-section--headed > .container-section-body,
-.workspace-panel.is-resizable > .panel > .container-section-body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-}
-
-/* The panel body is the single scroll container for resized cards. */
-.workspace-panel.is-resizable .object-list {
-    max-height: none;
-    overflow-y: visible;
-}
-
-/* Drag handle between adjacent cards. The handle track is 14px tall (the
-   same spacing the grid gap used to provide) with a thin grab line in the
-   center that highlights on hover/active. */
-.panel-resizer {
-    height: 14px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: row-resize;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    touch-action: none;
-    flex: 0 0 14px;
-}
-
-.panel-resizer::before {
-    content: '';
-    width: 36px;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--border);
-    transition: background 0.15s ease;
-}
-
-.panel-resizer:hover::before,
-.panel-resizer:focus-visible::before,
-.panel-resizer.is-active::before {
-    background: var(--primary);
-    outline: none;
-}
-
-.panel-resizer:focus-visible {
-    outline: none;
-}
-
-body.is-panel-resizing {
-    cursor: row-resize;
-    user-select: none;
 }
 
 /* Object list */
@@ -933,37 +1189,8 @@ body.is-panel-resizing {
     font-weight: 600;
 }
 
-/* Row counts panel full height */
-#panel-row-counts {
-    display: none !important;
-    flex: 1;
-    min-height: 0;
-    flex-direction: column;
-    overflow: hidden !important;
-}
-
-#panel-row-counts.active {
-    display: flex !important;
-}
-
-#panel-row-counts .container-section--headed {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-#panel-row-counts .container-section-body {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Row counts override for stacked layout */
+/* Row counts list styling (panel is now a floating panel) */
 #panel-row-counts #row-counts-list {
-    flex: 1;
-    min-height: 0;
     max-height: none;
     overflow-y: auto;
     overflow-x: hidden;
@@ -1113,8 +1340,15 @@ body.is-panel-resizing {
 
 .footer-row {
     justify-content: space-between;
+    align-items: center;
     gap: 14px;
     font-size: 13px;
+}
+
+.footer-finished-size {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .footer-version {

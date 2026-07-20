@@ -42,52 +42,100 @@
   <div class="shell">
     <div id="app-container">
 
-    <!-- Ribbon workspace bar -->
-    <div class="ribbon-bar">
-      <div class="ribbon-modes">
-        <button class="workspace-btn active" onclick="setWorkspace('sketch', this)" data-workspace="sketch">
-          <span class="icon">&#x270F;</span>
-          <span class="label">Sketch</span>
-        </button>
-        <button class="workspace-btn" onclick="setWorkspace('row-counts', this)" data-workspace="row-counts">
-          <span class="icon">&#9632;</span>
-          <span class="label">Row Counts</span>
-        </button>
-        <button class="workspace-btn" onclick="setWorkspace('overlay', this)" data-workspace="overlay">
-          <span class="icon">&#x1F5BC;</span>
-          <span class="label">Overlay</span>
-        </button>
-        <button class="workspace-btn" onclick="setWorkspace('templates', this)" data-workspace="templates">
-          <span class="icon">&#x1F4D0;</span>
-          <span class="label">Templates</span>
-        </button>
-        <button class="workspace-btn" onclick="setWorkspace('options', this)" data-workspace="options">
-          <span class="icon">&#x2699;</span>
-          <span class="label">Options</span>
-        </button>
+    <!-- Editor panel — bordered/rounded in normal view, flush in fullscreen -->
+    <div class="editor-panel">
+
+    <!-- Ribbon 2: Sketch tools — sits above the canvas in normal flow -->
+    <div class="ribbon-bar--tools" id="tool-ribbon-sketch">
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Draw</span>
+        <div class="ribbon-buttons">
+          <button class="tool-btn" id="tool-select" title="Select tool"><span class="tool-icon" aria-hidden="true">&#x2B07;</span><span class="tool-label">Select</span></button>
+          <button class="tool-btn" id="tool-fill" title="Fill tool"><span class="tool-icon" aria-hidden="true">&#x25A6;</span><span class="tool-label">Fill</span></button>
+          <button class="tool-btn" id="tool-anchor" title="Anchor tool"><span class="tool-icon" aria-hidden="true">&#x2295;</span><span class="tool-label">Anchor</span></button>
+          <button class="tool-btn" id="tool-line" title="Line tool"><span class="tool-icon" aria-hidden="true">&#x2571;</span><span class="tool-label">Line</span></button>
+          <button class="tool-btn" id="tool-construction-line" title="Construction line"><span class="tool-icon" aria-hidden="true">&#x2504;</span><span class="tool-label">Construction</span></button>
+          <button class="tool-btn" id="tool-circle" title="Circle tool"><span class="tool-icon" aria-hidden="true">&#x25CB;</span><span class="tool-label">Circle</span></button>
+          <button class="tool-btn" id="tool-rectangle" title="Rectangle tool"><span class="tool-icon" aria-hidden="true">&#x25AD;</span><span class="tool-label">Rectangle</span></button>
+          <button class="tool-btn" id="tool-bezier" title="B&eacute;zier curve"><span class="tool-icon" aria-hidden="true">&#x223F;</span><span class="tool-label">B&eacute;zier</span></button>
+        </div>
+      </div>
+      <div class="ribbon-divider"></div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Constraints</span>
+        <div class="ribbon-buttons">
+          <button class="tool-btn" id="tool-dimension" title="Dimension constraint"><span class="tool-icon" aria-hidden="true">&#x2194;</span><span class="tool-label">Dimension</span></button>
+          <button class="tool-btn" id="tool-hv" title="Horizontal/Vertical constraint"><span class="tool-icon" aria-hidden="true">&#x22A5;</span><span class="tool-label">H/V</span></button>
+          <button class="tool-btn" id="tool-coincident" title="Coincident constraint"><span class="tool-icon" aria-hidden="true">&#x25CF;</span><span class="tool-label">Coincident</span></button>
+          <button class="tool-btn" id="tool-equal" title="Equal length constraint"><span class="tool-icon" aria-hidden="true">&#x2261;</span><span class="tool-label">Equal</span></button>
+          <button class="tool-btn" id="tool-parallel" title="Parallel constraint"><span class="tool-icon" aria-hidden="true">&#x2225;</span><span class="tool-label">Parallel</span></button>
+          <button class="tool-btn" id="tool-perpendicular" title="Perpendicular constraint"><span class="tool-icon" aria-hidden="true">&#x2310;</span><span class="tool-label">Perpendicular</span></button>
+          <button class="tool-btn" id="tool-midpoint" title="Midpoint constraint"><span class="tool-icon" aria-hidden="true">&#x22BF;</span><span class="tool-label">Midpoint</span></button>
+        </div>
+      </div>
+      <div class="ribbon-divider"></div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Edit</span>
+        <div class="ribbon-buttons">
+          <button class="tool-btn tool-btn--sm" id="sketch-undo" title="Undo"><span class="tool-icon" aria-hidden="true">&#x21A9;</span><span class="tool-label">Undo</span></button>
+          <button class="tool-btn tool-btn--sm" id="sketch-clear" title="Clear"><span class="tool-icon" aria-hidden="true">&#x2715;</span><span class="tool-label">Clear</span></button>
+          <button class="tool-btn tool-btn--sm" id="sketch-delete" title="Delete"><span class="tool-icon" aria-hidden="true">&#x232B;</span><span class="tool-label">Delete</span></button>
+        </div>
       </div>
     </div>
 
-    <!-- Main workspace -->
-    <div class="page-layout page-layout--wide">
+    <!-- Workspace shell: vertical workspace tabs on the left + canvas on the right -->
+    <div class="workspace-layout">
 
-      <!-- Left: Canvas area -->
-      <div class="canvas-area">
+      <!-- Ribbon 1: Workspace tabs — vertical strip on the left -->
+      <div class="ribbon-bar ribbon-bar--workspace">
+        <div class="ribbon-modes">
+          <button class="workspace-btn active" onclick="setWorkspace('sketch', this)" data-workspace="sketch">
+            <span class="icon">&#x270F;</span>
+            <span class="label">Sketch</span>
+          </button>
+          <button class="workspace-btn" onclick="setWorkspace('row-counts', this)" data-workspace="row-counts">
+            <span class="icon">&#9632;</span>
+            <span class="label">Row Counts</span>
+          </button>
+          <button class="workspace-btn" onclick="setWorkspace('overlay', this)" data-workspace="overlay">
+            <span class="icon">&#x1F5BC;</span>
+            <span class="label">Overlay</span>
+          </button>
+          <button class="workspace-btn" onclick="setWorkspace('templates', this)" data-workspace="templates">
+            <span class="icon">&#x1F4D0;</span>
+            <span class="label">Templates</span>
+          </button>
+          <button class="workspace-btn" onclick="setWorkspace('options', this)" data-workspace="options">
+            <span class="icon">&#x2699;</span>
+            <span class="label">Options</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas area — fills the remaining space, touches all edges -->
+      <div class="canvas-area canvas-area--full">
         <div class="canvas-wrapper">
           <div class="canvas-content" id="konva-stage"></div>
         </div>
+
         <!-- Floating zoom control — top-left of canvas area -->
         <div class="zoom-control" id="zoom-control">
           <button class="zoom-btn" id="zoom-in" title="Zoom in">&#x2B;</button>
           <span class="zoom-level" id="zoom-level">100%</span>
           <button class="zoom-btn" id="zoom-out" title="Zoom out">&#x2212;</button>
           <div class="zoom-divider"></div>
-          <button class="zoom-btn" id="zoom-fit" title="Fit to screen">&#x29C9;</button>
+          <button class="zoom-btn" id="zoom-fit" title="Fit to screen">&#x25A1;</button>
           <button class="zoom-btn" id="zoom-reset" title="Reset to 100%">&#x21BB;</button>
+          <div class="zoom-divider"></div>
+          <button class="zoom-btn" id="canvas-fullscreen" title="Fullscreen canvas">&#x26F6;</button>
         </div>
+
+        <!-- Floating panels — workspace-specific content overlays the canvas -->
+        <!-- #include file="partials/sidebar.html" -->
       </div>
 
-      <!-- #include file="partials/sidebar.html" -->
+    </div>
 
     </div>
 

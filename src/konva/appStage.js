@@ -74,8 +74,8 @@ export class AppStage {
   _fitStageToContainer() {
     const parent = this.container.parentElement;
     if (!parent) return;
-    const w = parent.clientWidth - 24; // padding
-    const h = parent.clientHeight - 24;
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
     if (w > 0 && h > 0) {
       this.stage.width(w);
       this.stage.height(h);

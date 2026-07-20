@@ -78,7 +78,8 @@ export function setupZoomController({ store, documentObj = globalThis.document }
   });
 
   bindIfPresent(refs.zoomResetBtn, 'click', () => {
-    applyZoomResult(resetView());
+    const { w, h } = getViewportSize();
+    applyZoomResult(resetView(w, h));
   });
 
   bindIfPresent(refs.zoomFitBtn, 'click', () => {

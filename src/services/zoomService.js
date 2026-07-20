@@ -59,10 +59,10 @@ export function panBy(panX, panY, deltaX, deltaY) {
 }
 
 /**
- * Reset zoom to 100% and pan to origin.
+ * Reset zoom to 100% and center the origin in the viewport.
  */
-export function resetView() {
-  return { zoomLevel: 1, panOffsetX: 0, panOffsetY: 0 };
+export function resetView(viewW = 0, viewH = 0) {
+  return { zoomLevel: 1, panOffsetX: viewW / 2, panOffsetY: viewH / 2 };
 }
 
 /**
@@ -71,7 +71,7 @@ export function resetView() {
  */
 export function fitToView(gridW, gridH, viewW, viewH) {
   if (gridW <= 0 || gridH <= 0 || viewW <= 0 || viewH <= 0) {
-    return resetView();
+    return resetView(viewW, viewH);
   }
   const scale = Math.min(viewW / gridW, viewH / gridH, 1);
   const level = clampZoom(scale);

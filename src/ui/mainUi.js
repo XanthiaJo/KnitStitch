@@ -4,7 +4,9 @@ import { setupOverlayPanel } from './overlayPanelController.js';
 import { setupTemplatePanel } from './templatePanelController.js';
 import { setupZoomController } from './zoomController.js';
 import { setupKeyboardController } from './keyboardController.js';
-import { setupPanelResizers } from './panelResizer.js';
+import { setupFullscreenController } from './fullscreenController.js';
+import { setupFloatingPanels } from './floatingPanelController.js';
+import { setupFloatingPanelResizer } from './floatingPanelResizer.js';
 
 /**
  * Thin orchestrator that wires up each panel controller and returns the
@@ -21,7 +23,9 @@ export function setupMainUi({ store, sketchService, documentObj = globalThis.doc
   const template = setupTemplatePanel({ store, sketchService, documentObj });
   const zoom = setupZoomController({ store, documentObj });
   setupKeyboardController({ store, sketchService, documentObj });
-  const panelResizers = setupPanelResizers({ documentObj, windowObj });
+  setupFloatingPanels({ documentObj });
+  setupFloatingPanelResizer({ documentObj, windowObj });
+  setupFullscreenController({ documentObj });
 
   function syncAll() {
     grid.updateGridSidebar();
@@ -49,15 +53,6 @@ export function setupMainUi({ store, sketchService, documentObj = globalThis.doc
       if (originalSetWorkspace) originalSetWorkspace.call(this, ws, btn);
       store.set('currentWorkspace', ws);
       sketchService.isActive = ws === 'sketch' || ws === 'templates';
-      // Re-apply resizable panel layout now that the newly-active panel is
-      // visible (its height is measurable for drag math). rAF so the
-      // display:none -> grid swap has painted first.
-      if (panelResizers && documentObj) {
-        const panel = documentObj.getElementById('panel-' + ws);
-        if (panel) {
-          windowObj.requestAnimationFrame(() => panelResizers.refresh(panel));
-        }
-      }
     };
   }
 

@@ -1,8 +1,35 @@
-<!-- Right: Sidebar — content swaps with workspace -->
-<div class="sidebar" id="sidebar">
+<!-- Floating panels — workspace-specific content overlays the canvas.
+     Draw tools and constraints live in the tool ribbon (see index.html).
+     Sketch settings and the objects list live here. -->
 
-  <!-- Options workspace sidebar (formerly Grid) -->
-  <div class="workspace-panel" id="panel-options">
+<!-- Sketch workspace: Objects list + settings -->
+<div class="floating-panel workspace-panel active" id="panel-sketch">
+  <div class="floating-panel-header">
+    <span class="floating-panel-title">Objects</span>
+    <button class="floating-panel-toggle" title="Collapse">&#x25BE;</button>
+  </div>
+  <div class="floating-panel-resizer"></div>
+  <div class="floating-panel-body">
+    <div id="sketch-constraint-status" class="caption" style="margin:0 0 8px;color:#c0392b;"></div>
+    <ul class="object-list" id="sketch-object-list">
+    </ul>
+    <div class="toggle-group" style="margin-top:8px;">
+      <button class="button button-sm" id="sketch-copy-objects">Copy objects</button>
+      <button class="button button-sm" id="sketch-export-objects">Export</button>
+      <button class="button button-sm" id="sketch-import-objects">Import</button>
+      <input type="file" id="sketch-import-file" accept=".json,application/json" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<!-- Options workspace: Gauge, Finished Size, Hotkeys -->
+<div class="floating-panel workspace-panel" id="panel-options">
+  <div class="floating-panel-header">
+    <span class="floating-panel-title">Options</span>
+    <button class="floating-panel-toggle" title="Collapse">&#x25BE;</button>
+  </div>
+  <div class="floating-panel-resizer"></div>
+  <div class="floating-panel-body">
     <div class="container-section--headed">
       <div class="container-section-header">Gauge (per 4 inches)</div>
       <div class="container-section-body">
@@ -22,12 +49,37 @@
       </div>
     </div>
 
-    <div class="container-section--headed">
-      <div class="container-section-header">Finished Size</div>
+    <div class="container-section--headed" style="margin-top:14px;">
+      <div class="container-section-header">Sketch style</div>
       <div class="container-section-body">
-        <p id="finished-width">Width: -- in</p>
-        <p id="finished-height">Height: -- in</p>
-        <button class="button button-primary" id="btn-recalculate" style="margin-top:8px;">Recalculate</button>
+        <div class="form-row">
+          <label>Colour:</label>
+          <select id="sketch-color" style="flex:1;">
+            <option value="#8b5d1f" selected>Gold</option>
+            <option value="#E63946">Red</option>
+            <option value="#FF6B35">Orange</option>
+            <option value="#F4C430">Yellow</option>
+            <option value="#2D9E4F">Green</option>
+            <option value="#0A8A8A">Teal</option>
+            <option value="#1D70B8">Blue</option>
+            <option value="#6A3D9A">Purple</option>
+            <option value="#E75480">Pink</option>
+            <option value="#1A1A1A">Black</option>
+            <option value="#555555">Dark grey</option>
+            <option value="#999999">Grey</option>
+            <option value="#F5F5F5">White</option>
+          </select>
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <label>Thickness:</label>
+          <div class="slider-row" style="flex:1;">
+            <input type="range" id="sketch-thickness" min="1" max="10" value="2">
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="previewMatch" checked>
+          <label for="previewMatch">Preview matches line colour</label>
+        </div>
       </div>
     </div>
 
@@ -54,146 +106,57 @@
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Sketch workspace sidebar -->
-  <div class="workspace-panel active" id="panel-sketch">
-    <div class="container-section--headed">
-      <div class="container-section-header">Sketch</div>
-      <div class="container-section-body">
-        <div class="form-row">
-          <label>Line colour:</label>
-          <select id="sketch-color">
-            <option value="#8b5d1f" selected class="color-option"><span class="color-swatch" style="background:#8b5d1f;"></span> Gold</option>
-            <option value="#E63946" class="color-option"><span class="color-swatch" style="background:#E63946;"></span> Red</option>
-            <option value="#FF6B35" class="color-option"><span class="color-swatch" style="background:#FF6B35;"></span> Orange</option>
-            <option value="#F4C430" class="color-option"><span class="color-swatch" style="background:#F4C430;"></span> Yellow</option>
-            <option value="#2D9E4F" class="color-option"><span class="color-swatch" style="background:#2D9E4F;"></span> Green</option>
-            <option value="#0A8A8A" class="color-option"><span class="color-swatch" style="background:#0A8A8A;"></span> Teal</option>
-            <option value="#1D70B8" class="color-option"><span class="color-swatch" style="background:#1D70B8;"></span> Blue</option>
-            <option value="#6A3D9A" class="color-option"><span class="color-swatch" style="background:#6A3D9A;"></span> Purple</option>
-            <option value="#E75480" class="color-option"><span class="color-swatch" style="background:#E75480;"></span> Pink</option>
-            <option value="#1A1A1A" class="color-option"><span class="color-swatch" style="background:#1A1A1A;"></span> Black</option>
-            <option value="#555555" class="color-option"><span class="color-swatch" style="background:#555555;"></span> Dark grey</option>
-            <option value="#999999" class="color-option"><span class="color-swatch" style="background:#999999;"></span> Grey</option>
-            <option value="#F5F5F5" class="color-option"><span class="color-swatch" style="background:#F5F5F5;"></span> White</option>
-          </select>
-        </div>
-        <div class="form-row" style="margin-top:8px;">
-          <label>Thickness:</label>
-          <div class="slider-row">
-            <input type="range" id="sketch-thickness" min="1" max="10" value="2">
-          </div>
-        </div>
-        <div class="checkbox-row">
-          <input type="checkbox" id="previewMatch" checked>
-          <label for="previewMatch">Preview matches line colour</label>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="button button-sm" id="sketch-undo">Undo</button>
-          <button class="button button-sm" id="sketch-clear">Clear</button>
-          <button class="button button-sm" id="sketch-delete">Delete</button>
-        </div>
-        <p class="caption">Click to place points, chain lines. Snap ring = existing point. Right-click or Esc to cancel.</p>
-      </div>
+<!-- Row Counts workspace -->
+<div class="floating-panel workspace-panel" id="panel-row-counts">
+  <div class="floating-panel-header">
+    <span class="floating-panel-title">Row Counts</span>
+    <button class="floating-panel-toggle" title="Collapse">&#x25BE;</button>
+  </div>
+  <div class="floating-panel-resizer"></div>
+  <div class="floating-panel-body">
+    <ul class="object-list" id="row-counts-list">
+    </ul>
+    <p class="caption" id="row-counts-empty" style="display:none;">No filled cells yet.</p>
+  </div>
+</div>
+
+<!-- Overlay workspace -->
+<div class="floating-panel workspace-panel" id="panel-overlay">
+  <div class="floating-panel-header">
+    <span class="floating-panel-title">Image Overlay</span>
+    <button class="floating-panel-toggle" title="Collapse">&#x25BE;</button>
+  </div>
+  <div class="floating-panel-resizer"></div>
+  <div class="floating-panel-body">
+    <div class="form-row">
+      <input type="text" id="overlay-path" placeholder="No image selected" readonly style="flex:1;">
+      <button class="button button-sm" id="overlay-browse">Browse</button>
+      <button class="button button-sm" id="overlay-clear">Clear</button>
+      <input type="file" id="overlay-file" accept="image/*" style="display:none;">
     </div>
-
-    <div class="container-section--headed">
-      <div class="container-section-header">Draw</div>
-      <div class="container-section-body">
-        <p style="font-size:12px;font-weight:600;margin-bottom:6px;">Shape tools:</p>
-        <div class="toggle-group">
-          <button class="button button-sm" id="tool-select">Select</button>
-          <button class="button button-sm" id="tool-fill">Fill</button>
-          <button class="button button-sm" id="tool-anchor">Anchor</button>
-          <button class="button button-sm" id="tool-line">Line</button>
-          <button class="button button-sm" id="tool-construction-line">Construction</button>
-          <button class="button button-sm" id="tool-circle">Circle</button>
-          <button class="button button-sm" id="tool-rectangle">Rectangle</button>
-          <button class="button button-sm" id="tool-bezier">Bézier</button>
-          <button class="button button-sm" disabled>Triangle</button>
-        </div>
-        <p class="caption">Basic geometric shapes for sketching.</p>
-      </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="overlay-show">
+      <label for="overlay-show">Show overlay</label>
     </div>
-
-    <div class="container-section--headed">
-      <div class="container-section-header">Constraints</div>
-      <div class="container-section-body">
-        <p style="font-size:12px;font-weight:600;margin-bottom:6px;">Apply constraint:</p>
-        <div class="toggle-group">
-          <button class="button button-sm" id="tool-dimension">Dimension</button>
-          <button class="button button-sm" id="tool-hv">H/V</button>
-          <button class="button button-sm" id="tool-coincident">Coincident</button>
-          <button class="button button-sm" disabled>Tangent</button>
-          <button class="button button-sm" id="tool-equal">Equal</button>
-          <button class="button button-sm" id="tool-parallel">Parallel</button>
-          <button class="button button-sm" id="tool-perpendicular">Perpendicular</button>
-          <button class="button button-sm" id="tool-midpoint">Midpoint</button>
-        </div>
-        <p class="caption">Constraints enforce geometric relationships between sketch entities.</p>
-        <div id="sketch-constraint-status" class="caption" style="margin-top:8px;color:#c0392b;"></div>
-      </div>
-    </div>
-
-    <div class="container-section--headed">
-      <div class="container-section-header">Objects</div>
-      <div class="container-section-body">
-        <ul class="object-list" id="sketch-object-list">
-        </ul>
-        <div class="toggle-group" style="margin-top:8px;">
-          <button class="button button-sm" id="sketch-copy-objects">Copy objects</button>
-          <button class="button button-sm" id="sketch-export-objects">Export</button>
-          <button class="button button-sm" id="sketch-import-objects">Import</button>
-          <input type="file" id="sketch-import-file" accept=".json,application/json" style="display:none;">
-        </div>
-      </div>
+    <div class="slider-row" style="margin-top:6px;">
+      <label style="min-width:auto;">Opacity</label>
+      <input type="range" id="overlay-opacity" min="0" max="100" value="50">
     </div>
   </div>
+</div>
 
-  <!-- Row Counts workspace sidebar -->
-  <div class="workspace-panel" id="panel-row-counts">
-    <div class="container-section--headed">
-      <div class="container-section-header">Row Counts</div>
-      <div class="container-section-body">
-        <ul class="object-list" id="row-counts-list">
-        </ul>
-        <p class="caption" id="row-counts-empty" style="display:none;">No filled cells yet.</p>
-      </div>
-    </div>
+<!-- Templates workspace -->
+<div class="floating-panel workspace-panel" id="panel-templates">
+  <div class="floating-panel-header">
+    <span class="floating-panel-title">Templates</span>
+    <button class="floating-panel-toggle" title="Collapse">&#x25BE;</button>
   </div>
-
-  <!-- Overlay workspace sidebar -->
-  <div class="workspace-panel" id="panel-overlay">
-    <div class="container-section--headed">
-      <div class="container-section-header">Image Overlay</div>
-      <div class="container-section-body">
-        <div class="form-row">
-          <input type="text" id="overlay-path" placeholder="No image selected" readonly style="flex:1;">
-          <button class="button button-sm" id="overlay-browse">Browse</button>
-          <button class="button button-sm" id="overlay-clear">Clear</button>
-          <input type="file" id="overlay-file" accept="image/*" style="display:none;">
-        </div>
-        <div class="checkbox-row">
-          <input type="checkbox" id="overlay-show">
-          <label for="overlay-show">Show overlay</label>
-        </div>
-        <div class="slider-row" style="margin-top:6px;">
-          <label style="min-width:auto;">Opacity</label>
-          <input type="range" id="overlay-opacity" min="0" max="100" value="50">
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Templates workspace sidebar -->
-  <div class="workspace-panel" id="panel-templates">
-    <div class="container-section--headed">
-      <div class="container-section-header">Templates</div>
-      <div class="container-section-body">
-        <p class="caption">Click a template to generate it onto the grid. Generated lines can be manipulated in the Sketch workspace.</p>
-        <div class="toggle-group" id="template-list">
-        </div>
-      </div>
+  <div class="floating-panel-resizer"></div>
+  <div class="floating-panel-body">
+    <p class="caption">Click a template to generate it onto the grid. Generated lines can be manipulated in the Sketch workspace.</p>
+    <div class="toggle-group" id="template-list">
     </div>
 
     <div class="container-section--headed" id="template-measurements-panel" style="display:none;">
@@ -233,9 +196,8 @@
           <li>Instep + front leg: <span id="derived-section-c">--</span> rows</li>
           <li>Ribbing: <span id="derived-rib-2">--</span> rows</li>
         </ul>
-        <p class="caption" style="margin-top:6px;">Gauge: <span id="derived-gauge">--</span> sts / <span id="derived-gauge-rows">--</span> rows per 4 in (edit in Grid panel).</p>
+        <p class="caption" style="margin-top:6px;">Gauge: <span id="derived-gauge">--</span> sts / <span id="derived-gauge-rows">--</span> rows per 4 in (edit in Options panel).</p>
       </div>
     </div>
   </div>
-
 </div>
